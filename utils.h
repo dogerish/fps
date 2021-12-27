@@ -19,14 +19,14 @@
 
 int init(SDL_Window** window, SDL_Renderer** renderer);
 void quit(
-	SDL_Texture* textures[], SDL_Texture* floortex, SDL_Texture* ceiltex,
+	SDL_Texture* textures[], SDL_Surface* floortex, SDL_Surface* ceiltex,
 	SDL_Window* window, SDL_Renderer* renderer
 );
 
 int loadtex(
 	SDL_Renderer* renderer,
 	SDL_Texture* textures[],
-	SDL_Texture* &floortex,
-	SDL_Texture* &ceiltex
+	SDL_Surface* &floortex,
+	SDL_Surface* &ceiltex
 );
 #endif

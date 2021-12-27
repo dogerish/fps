@@ -11,6 +11,9 @@
 #include "utils.h"
 #include "rays.h"
 
+#define FLCL_POINTERUP p = (Uint8*) (floortex->pixels) + 3 * (src.y * TEXSIZE + src.x)
+#define FLCL_DRAWCOLOR SDL_SetRenderDrawColor(renderer, *p*v, *(p+1)*v, *(p+2)*v, 0xff)
+
 const float MAXDIST = hypot(MAPW, MAPH) * 0.9;
 // 0 = empty; 4 bits to determine the texture of each face
 Uint16 tiles[MAPW][MAPH] = {
@@ -41,8 +44,8 @@ Uint16 tiles[MAPW][MAPH] = {
 	0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 
 };
 SDL_Texture* textures[15];
-SDL_Texture* floortex;
-SDL_Texture* ceiltex;
+SDL_Surface* floortex;
+SDL_Surface* ceiltex;
 float fov = (M_PI / 2) / 2;
 
 int filter(void* arg, SDL_Event* e) { return e->type == SDL_QUIT; }
@@ -77,43 +80,39 @@ int main(int argc, char* argv[])
 		}
 		// render
 		// ceiling and floor
-		Uint32 start = SDL_GetTicks();
 		{
-			SDL_Rect src, r;
-			src.w = src.h = r.w = r.h = 1;
-			for (r.y = HEIGHT / 2; r.y < HEIGHT; r.y++)
+		SDL_Point src, dest;
+		Uint8* p;
+		for (dest.y = HEIGHT / 2; dest.y < HEIGHT; dest.y++)
+		{
+			// distance to floor horizontally
+			float dist = HEIGHT / (SQRT_2 * (dest.y - HEIGHT / 2));
+			Vec2d<float> step = {
+				dist / WIDTH * (fieldright.x - fieldleft.x),
+				dist / WIDTH * (fieldright.y - fieldleft.y),
+				-1
+			};
+			// get map coords
+			Vec2d<float> mappos = {
+				pos.x + dist * fieldleft.x,
+				pos.y + dist * fieldleft.y,
+				-1
+			};
+			float v = (0xff - 0xef * dist / MAXDIST) / 255.f;
+			for (dest.x = 0; dest.x < WIDTH; dest.x++)
 			{
-				// distance to floor horizontally
-				float dist = HEIGHT / (SQRT_2 * (r.y - HEIGHT / 2));
-				Vec2d<float> step = {
-					dist / WIDTH * (fieldright.x - fieldleft.x),
-					dist / WIDTH * (fieldright.y - fieldleft.y),
-					-1
-				};
-				// get map coords
-				Vec2d<float> mappos = {
-					pos.x + dist * fieldleft.x,
-					pos.y + dist * fieldleft.y,
-					-1
-				};
-				Uint8 v = 0xff - 0xef * (dist / MAXDIST);
-				SDL_SetTextureColorMod(floortex, v, v, v);
-				SDL_SetTextureColorMod(ceiltex,  v, v, v);
-				for (r.x = 0; r.x < WIDTH; r.x++)
-				{
-					src.x = (int) ((mappos.x - (int) mappos.x) * TEXSIZE) & TEXSIZE - 1;
-					src.y = (int) ((mappos.y - (int) mappos.y) * TEXSIZE) & TEXSIZE - 1;
-					SDL_RenderCopy(renderer, floortex, &src, &r);
-					r.y = HEIGHT - r.y;
-					SDL_RenderCopy(renderer, ceiltex, &src, &r);
-					r.y = HEIGHT - r.y;
-					mappos.x += step.x; mappos.y += step.y;
-				}
+				src.x = (int) ((mappos.x - (int) mappos.x) * TEXSIZE) & TEXSIZE - 1;
+				src.y = (int) ((mappos.y - (int) mappos.y) * TEXSIZE) & TEXSIZE - 1;
+				FLCL_POINTERUP; FLCL_DRAWCOLOR;
+				SDL_RenderDrawPoint(renderer, dest.x, dest.y);
+				FLCL_POINTERUP; FLCL_DRAWCOLOR;
+				SDL_RenderDrawPoint(renderer, dest.x, HEIGHT - dest.y);
+
+				mappos.x += step.x; mappos.y += step.y;
 			}
 		}
-		std::cout << "A: " << SDL_GetTicks() - start << std::endl;
+		}
 		// walls
-		start = SDL_GetTicks();
 		{
 			Vec2d<float> vel = fieldleft;
 			Vec2d<float> step = {
@@ -140,10 +139,7 @@ int main(int argc, char* argv[])
 				SDL_RenderCopy(renderer, t, &src, &r);
 			}
 		}
-		std::cout << "B: " << SDL_GetTicks() - start << std::endl;
-		start = SDL_GetTicks();
 		SDL_RenderPresent(renderer);
-		std::cout << "C: " << SDL_GetTicks() - start << std::endl;
 	}
 	quit(textures, floortex, ceiltex, window, renderer);
 	return 0;

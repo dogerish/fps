@@ -17,13 +17,13 @@ int init(SDL_Window** window, SDL_Renderer** renderer)
 }
 
 void quit(
-	SDL_Texture* textures[], SDL_Texture* floortex, SDL_Texture* ceiltex,
+	SDL_Texture* textures[], SDL_Surface* floortex, SDL_Surface* ceiltex,
 	SDL_Window* window, SDL_Renderer* renderer
 )
 {
 	for (int i = 0; i < 15; i++) SDL_DestroyTexture(textures[i]);
-	SDL_DestroyTexture(floortex);
-	SDL_DestroyTexture(ceiltex);
+	SDL_FreeSurface(floortex);
+	SDL_FreeSurface(ceiltex);
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
@@ -33,8 +33,8 @@ void quit(
 int loadtex(
 	SDL_Renderer* renderer,
 	SDL_Texture* textures[],
-	SDL_Texture* &floortex,
-	SDL_Texture* &ceiltex
+	SDL_Surface* &floortex,
+	SDL_Surface* &ceiltex
 )
 {
 	int err = 0;
@@ -47,11 +47,9 @@ int loadtex(
 		err |= (textures[i] = SDL_CreateTextureFromSurface(renderer, surface)) == NULL;
 		SDL_FreeSurface(surface);
 	}
-	err |= (surface = SDL_LoadBMP("textures/floor.bmp")) == NULL;
-	err |= (floortex = SDL_CreateTextureFromSurface(renderer, surface)) == NULL;
-	SDL_FreeSurface(surface);
-	err |= (surface = SDL_LoadBMP("textures/ceiling.bmp")) == NULL;
-	err |= (ceiltex = SDL_CreateTextureFromSurface(renderer, surface)) == NULL;
-	SDL_FreeSurface(surface);
+	err |= (floortex = SDL_LoadBMP("textures/floor.bmp")) == NULL;
+	SDL_LockSurface(floortex);
+	err |= (ceiltex = SDL_LoadBMP("textures/ceiling.bmp")) == NULL;
+	SDL_LockSurface(ceiltex);
 	return err * -1;
 }
