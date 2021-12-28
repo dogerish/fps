@@ -11,7 +11,7 @@
 #include "utils.h"
 #include "rays.h"
 
-#define FLCL_POINTERUP p = (Uint8*) (floortex->pixels) + 3 * (src.y * TEXSIZE + src.x)
+#define FLCL_POINTERUP(surface) p = (Uint8*) (surface->pixels) + 3 * (src.y * TEXSIZE + src.x)
 #define FLCL_DRAWCOLOR SDL_SetRenderDrawColor(renderer, *p*v, *(p+1)*v, *(p+2)*v, 0xff)
 
 const float MAXDIST = hypot(MAPW, MAPH) * 0.9;
@@ -56,7 +56,11 @@ int main(int argc, char* argv[])
 	SDL_Renderer* renderer;
 	if (init(&window, &renderer)) return 1;
 	SDL_SetEventFilter(filter, NULL);
-	loadtex(renderer, textures, floortex, ceiltex);
+	if (loadtex(renderer, textures, floortex, ceiltex))
+	{
+		std::cout << SDL_GetError() << std::endl;
+		return 1;
+	}
 	Vec2d<float> pos = { MAPW / 2.f, MAPH / 2.f, -1};
 	float heading = 0;
 	Vec2d<float> fieldleft, fieldright;
@@ -103,9 +107,9 @@ int main(int argc, char* argv[])
 			{
 				src.x = (int) ((mappos.x - (int) mappos.x) * TEXSIZE) & TEXSIZE - 1;
 				src.y = (int) ((mappos.y - (int) mappos.y) * TEXSIZE) & TEXSIZE - 1;
-				FLCL_POINTERUP; FLCL_DRAWCOLOR;
+				FLCL_POINTERUP(floortex); FLCL_DRAWCOLOR;
 				SDL_RenderDrawPoint(renderer, dest.x, dest.y);
-				FLCL_POINTERUP; FLCL_DRAWCOLOR;
+				FLCL_POINTERUP(ceiltex); FLCL_DRAWCOLOR;
 				SDL_RenderDrawPoint(renderer, dest.x, HEIGHT - dest.y);
 
 				mappos.x += step.x; mappos.y += step.y;
