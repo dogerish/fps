@@ -2,10 +2,12 @@
 #ifdef __linux__
 #include <SDL2/SDL.h>
 #include <SDL2/SDL2_gfxPrimitives.h>
+#include <SDL2/SDL_ttf.h>
 #endif
 #ifdef __APPLE__
 #include <SDL.h>
 #include <SDL2_gfxPrimitives.h>
+#include <SDL_ttf.h>
 #endif
 #include <cmath>
 #include "utils.h"
@@ -54,7 +56,11 @@ int main(int argc, char* argv[])
 {
 	SDL_Window*   window;
 	SDL_Renderer* renderer;
-	if (init(&window, &renderer)) return 1;
+	if (init(&window, &renderer) || TTF_Init())
+	{
+		std::cout << SDL_GetError() << std::endl;
+		return 1;
+	}
 	SDL_SetEventFilter(filter, NULL);
 	if (loadtex(renderer, textures, floortex, ceiltex))
 	{
@@ -64,21 +70,26 @@ int main(int argc, char* argv[])
 	Vec2d<float> pos = { MAPW / 2.f, MAPH / 2.f, -1};
 	float heading = 0;
 	Vec2d<float> fieldleft, fieldright;
+	TTF_Font* font = TTF_OpenFont("Sans.ttf", 12);
+	if (!font) std::cout << SDL_GetError() << std::endl;
+	SDL_Surface* text;
+	SDL_Texture* texttex;
+	char infostr[64];
 	Uint32 lasttick = SDL_GetTicks();
 	const Uint8* kb = SDL_GetKeyboardState(NULL);
 	for (SDL_Event e; e.type != SDL_QUIT; SDL_PollEvent(&e))
 	{
+		float tdiff = (SDL_GetTicks() - lasttick);
+		lasttick = SDL_GetTicks();
 		// update player
 		{
-			float tdiff = (SDL_GetTicks() - lasttick) / 500.f;
-			lasttick = SDL_GetTicks();
-			int multiplier = (kb[SDL_SCANCODE_W] - kb[SDL_SCANCODE_S]) * 2;
+			float multiplier = (kb[SDL_SCANCODE_W] - kb[SDL_SCANCODE_S]) / 250.f;
 			Vec2d<float> last = pos;
 			pos.x += multiplier * tdiff * cos(heading);
 			if (tiles[(int) pos.y][(int) pos.x]) pos.x = last.x;
 			pos.y += multiplier * tdiff * sin(heading);
 			if (tiles[(int) pos.y][(int) pos.x]) pos.y = last.y;
-			heading += (kb[SDL_SCANCODE_D] - kb[SDL_SCANCODE_A]) * tdiff;
+			heading += (kb[SDL_SCANCODE_D] - kb[SDL_SCANCODE_A]) * tdiff / 500.f;
 			fieldleft  = { cos(heading - fov), sin(heading - fov), 1 };
 			fieldright = { cos(heading + fov), sin(heading + fov), 1 };
 		}
@@ -143,6 +154,20 @@ int main(int argc, char* argv[])
 				SDL_RenderCopy(renderer, t, &src, &r);
 			}
 		}
+		heading = fmod(heading, 2 * M_PI);
+		heading += (heading < 0) * 2 * M_PI;
+		sprintf(
+			infostr,
+			"%i deg | %4.1f fps",
+			(int) (heading * 180 / M_PI),
+			1000 / (float) tdiff
+		);
+		text = TTF_RenderText_Solid(font, infostr, (SDL_Color) { 255, 255, 255, 255 });
+		texttex = SDL_CreateTextureFromSurface(renderer, text);
+		SDL_Rect s = { 0, 0, text->w, text->h };
+		SDL_RenderCopy(renderer, texttex, NULL, &s);
+		SDL_FreeSurface(text);
+		SDL_DestroyTexture(texttex);
 		SDL_RenderPresent(renderer);
 	}
 	quit(textures, floortex, ceiltex, window, renderer);
