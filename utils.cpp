@@ -8,44 +8,41 @@
 #include <SDL2_gfxPrimitives.h>
 #endif
 
-int init(SDL_Window** window, SDL_Renderer** renderer)
+int init(SDL_Window* &window, SDL_Surface* &surface)
 {
 	return (
 		   SDL_Init(SDL_INIT_VIDEO)
-		|| SDL_CreateWindowAndRenderer(WIDTH, HEIGHT, 0, window, renderer)
+		|| (window = SDL_CreateWindow("raycaster", 0, 0, WIDTH, HEIGHT, 0)) == NULL
+		|| (surface = SDL_GetWindowSurface(window)) == NULL
 	) * -1;
 }
 
 void quit(
-	SDL_Texture* textures[], SDL_Surface* floortex, SDL_Surface* ceiltex,
-	SDL_Window* window, SDL_Renderer* renderer
+	SDL_Surface* textures[], SDL_Surface* floortex, SDL_Surface* ceiltex,
+	SDL_Window* window, SDL_Surface* surface
 )
 {
-	for (int i = 0; i < 15; i++) SDL_DestroyTexture(textures[i]);
+	for (int i = 0; i < 15; i++) SDL_FreeSurface(textures[i]);
 	SDL_FreeSurface(floortex);
 	SDL_FreeSurface(ceiltex);
-	SDL_DestroyRenderer(renderer);
+	SDL_FreeSurface(surface);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 }
 
 // load textures; 0 on success
 int loadtex(
-	SDL_Renderer* renderer,
-	SDL_Texture* textures[],
+	SDL_Surface* textures[],
 	SDL_Surface* &floortex,
 	SDL_Surface* &ceiltex
 )
 {
 	int err = 0;
 	char filename[20];
-	SDL_Surface* surface;
 	for (int i = 0; i < 15; i++)
 	{
 		sprintf(filename, "textures/%i.bmp", i + 1);
-		err |= (surface = SDL_LoadBMP(filename)) == NULL;
-		err |= (textures[i] = SDL_CreateTextureFromSurface(renderer, surface)) == NULL;
-		SDL_FreeSurface(surface);
+		err |= (textures[i] = SDL_LoadBMP(filename)) == NULL;
 	}
 	err |= (floortex = SDL_LoadBMP("textures/floor.bmp")) == NULL;
 	SDL_LockSurface(floortex);

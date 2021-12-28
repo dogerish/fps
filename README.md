@@ -52,3 +52,7 @@ Raycaster made by me, algorithms inspired by online sources.
 
 14. [![video](thumbnails/2021-12-28%20at%2010.39.13.png)](https://streamable.com/j6oz31)<br/>
    2021-12-28 at 10.39.13: Added display of heading and fps
+
+15. [![video](thumbnails/2021-12-28%20at%2012.50.11.png)](https://streamable.com/fznbon)<br/>
+   2021-12-28 at 12.50.11: Refactored to use surfaces (CPU-based rendering). Much more efficient for this ray caster.
+

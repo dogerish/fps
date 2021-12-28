@@ -17,16 +17,18 @@
 #define TEXSIZE 64
 #define SQRT_2  1.4142135624f
 
-int init(SDL_Window** window, SDL_Renderer** renderer);
+int init(SDL_Window* &window, SDL_Surface* &surface);
+
 void quit(
-	SDL_Texture* textures[], SDL_Surface* floortex, SDL_Surface* ceiltex,
-	SDL_Window* window, SDL_Renderer* renderer
+	SDL_Surface* textures[], SDL_Surface* floortex, SDL_Surface* ceiltex,
+	SDL_Window* window, SDL_Surface* surface
 );
 
+// load textures; 0 on success
 int loadtex(
-	SDL_Renderer* renderer,
-	SDL_Texture* textures[],
+	SDL_Surface* textures[],
 	SDL_Surface* &floortex,
 	SDL_Surface* &ceiltex
 );
+
 #endif

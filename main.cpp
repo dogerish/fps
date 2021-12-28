@@ -14,7 +14,7 @@
 #include "rays.h"
 
 #define FLCL_POINTERUP(surface) p = (Uint8*) (surface->pixels) + 3 * (src.y * TEXSIZE + src.x)
-#define FLCL_DRAWCOLOR SDL_SetRenderDrawColor(renderer, *p*v, *(p+1)*v, *(p+2)*v, 0xff)
+#define FLCL_DRAWPOINT(y) winpixels[y * WIDTH + dest.x] = SDL_MapRGBA(surface->format, *p*v, *(p+1)*v, *(p+2)*v, 0xff)
 
 const float MAXDIST = hypot(MAPW, MAPH) * 0.9;
 // 0 = empty; 4 bits to determine the texture of each face
@@ -45,7 +45,7 @@ Uint16 tiles[MAPW][MAPH] = {
 	0x1234, 0x0000, 0x1234, 0x0000, 0x0000, 0x0000, 0x0000, 0x1234, 0x0000, 0x0000, 0x0000, 0x1234, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x1234, 
 	0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 
 };
-SDL_Texture* textures[15];
+SDL_Surface* textures[15];
 SDL_Surface* floortex;
 SDL_Surface* ceiltex;
 float fov = (M_PI / 2) / 2;
@@ -54,15 +54,15 @@ int filter(void* arg, SDL_Event* e) { return e->type == SDL_QUIT; }
 
 int main(int argc, char* argv[])
 {
-	SDL_Window*   window;
-	SDL_Renderer* renderer;
-	if (init(&window, &renderer) || TTF_Init())
+	SDL_Window*  window;
+	SDL_Surface* surface;
+	if (init(window, surface) || TTF_Init())
 	{
 		std::cout << SDL_GetError() << std::endl;
 		return 1;
 	}
 	SDL_SetEventFilter(filter, NULL);
-	if (loadtex(renderer, textures, floortex, ceiltex))
+	if (loadtex(textures, floortex, ceiltex))
 	{
 		std::cout << SDL_GetError() << std::endl;
 		return 1;
@@ -73,7 +73,6 @@ int main(int argc, char* argv[])
 	TTF_Font* font = TTF_OpenFont("Sans.ttf", 12);
 	if (!font) std::cout << SDL_GetError() << std::endl;
 	SDL_Surface* text;
-	SDL_Texture* texttex;
 	char infostr[64];
 	Uint32 lasttick = SDL_GetTicks();
 	const Uint8* kb = SDL_GetKeyboardState(NULL);
@@ -96,6 +95,8 @@ int main(int argc, char* argv[])
 		// render
 		// ceiling and floor
 		{
+		SDL_LockSurface(surface);
+		Uint32* winpixels = (Uint32*) surface->pixels;
 		SDL_Point src, dest;
 		Uint8* p;
 		for (dest.y = HEIGHT / 2; dest.y < HEIGHT; dest.y++)
@@ -118,14 +119,13 @@ int main(int argc, char* argv[])
 			{
 				src.x = (int) ((mappos.x - (int) mappos.x) * TEXSIZE) & TEXSIZE - 1;
 				src.y = (int) ((mappos.y - (int) mappos.y) * TEXSIZE) & TEXSIZE - 1;
-				FLCL_POINTERUP(floortex); FLCL_DRAWCOLOR;
-				SDL_RenderDrawPoint(renderer, dest.x, dest.y);
-				FLCL_POINTERUP(ceiltex); FLCL_DRAWCOLOR;
-				SDL_RenderDrawPoint(renderer, dest.x, HEIGHT - dest.y);
+				FLCL_POINTERUP(floortex); FLCL_DRAWPOINT(dest.y);
+				FLCL_POINTERUP(ceiltex);  FLCL_DRAWPOINT((HEIGHT - dest.y));
 
 				mappos.x += step.x; mappos.y += step.y;
 			}
 		}
+		SDL_UnlockSurface(surface);
 		}
 		// walls
 		{
@@ -145,13 +145,13 @@ int main(int argc, char* argv[])
 				float h = HEIGHT / d.mag;
 				h *= (h >= 0);
 				SDL_Rect r = { i, (int) ((HEIGHT - h) / 2), 1, (int) h };
-				SDL_Texture* t = textures[
+				SDL_Surface* t = textures[
 					(tiles[tile.y][tile.x] >> side * 4 & 0xf) - 1
 				];
 				Uint8 v = 0xff - 0xef * (d.mag / MAXDIST);
-				SDL_SetTextureColorMod(t, v, v, v);
+				SDL_SetSurfaceColorMod(t, v, v, v);
 				src.x = ((side % 2) ? pos.x + d.x - tile.x : pos.y + d.y - tile.y) * TEXSIZE;
-				SDL_RenderCopy(renderer, t, &src, &r);
+				SDL_BlitScaled(t, &src, surface, &r);
 			}
 		}
 		heading = fmod(heading, 2 * M_PI);
@@ -163,13 +163,11 @@ int main(int argc, char* argv[])
 			1000 / (float) tdiff
 		);
 		text = TTF_RenderText_Solid(font, infostr, (SDL_Color) { 255, 255, 255, 255 });
-		texttex = SDL_CreateTextureFromSurface(renderer, text);
-		SDL_Rect s = { 0, 0, text->w, text->h };
-		SDL_RenderCopy(renderer, texttex, NULL, &s);
+		SDL_Rect rect = { 0, 0, text->w, text->h };
+		SDL_BlitSurface(text, NULL, surface, &rect);
+		SDL_UpdateWindowSurface(window);
 		SDL_FreeSurface(text);
-		SDL_DestroyTexture(texttex);
-		SDL_RenderPresent(renderer);
 	}
-	quit(textures, floortex, ceiltex, window, renderer);
+	quit(textures, floortex, ceiltex, window, surface);
 	return 0;
 }
