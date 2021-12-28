@@ -49,3 +49,6 @@ Raycaster made by me, algorithms inspired by online sources.
 
 13. [![video](thumbnails/2021-12-26%20at%2019.18.28.png)](https://streamable.com/uyyh0k)<br/>
    2021-12-26 at 19.18.28: Optimized the floors and ceiling
+
+14. [![video](thumbnails/2021-12-28%20at%2010.39.13.png)](https://streamable.com/j6oz31)<br/>
+   2021-12-28 at 10.39.13: Added display of heading and fps
