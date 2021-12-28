@@ -1,0 +1,19 @@
+// locations of sources of textures found in Sauerbraten. All of these are in packages/textures/
+
+      1.bmp: default.png
+      2.bmp: fatum/bricks4.jpg
+      3.bmp: fatum/zavial2.jpg
+      4.bmp: fatum/bricks2.jpg
+      5.bmp: unnamed/panels02c.png
+      6.bmp: unnamed/wall01-f.png
+      7.bmp: swatllama/ice_c.jpg
+      8.bmp: nieb/autumn/face4.jpg
+      9.bmp: swatllama/fadedwood2_c.jpg
+     10.bmp: medieval_soc/wood_trim1d.jpg
+     11.bmp: fatum/rock.jpg
+     12.bmp: fatum/concreteblock.jpg
+     13.bmp: fatum/grey.jpg
+     14.bmp: fatum/bricks.jpg
+     15.bmp: waterfall.jpg
+  floor.bmp: fatum/floor1.jpg
+ceiling.bmp: fatum/tiles6.jpg

@@ -12,7 +12,7 @@
 #define HEIGHT  480
 #define MAPW    25
 #define MAPH    25
-#define TEXSIZE 64
+#define TEXSIZE 128
 #define SQRT_2  1.4142135624f
 
 int init(SDL_Window* &window, SDL_Surface* &surface);
