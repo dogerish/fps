@@ -1,11 +1,9 @@
 #include "utils.h"
 #ifdef __linux__
 #include <SDL2/SDL.h>
-#include <SDL2/SDL2_gfxPrimitives.h>
 #endif
 #ifdef __APPLE__
 #include <SDL.h>
-#include <SDL2_gfxPrimitives.h>
 #endif
 
 int init(SDL_Window* &window, SDL_Surface* &surface)

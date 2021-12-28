@@ -56,3 +56,6 @@ Raycaster made by me, algorithms inspired by online sources.
 15. [![video](thumbnails/2021-12-28%20at%2012.50.11.png)](https://streamable.com/fznbon)<br/>
    2021-12-28 at 12.50.11: Refactored to use surfaces (CPU-based rendering). Much more efficient for this ray caster.
 
+15. [![video](thumbnails/2021-12-28%20at%2014.41.30.png)](https://streamable.com/1js8uo)<br/>
+   2021-12-28 at 14.41.30: Sort of fixed the bug with close walls being glitched
+

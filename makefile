@@ -1,6 +1,6 @@
 GCC=g++
 CFLAGS := $(shell sdl2-config --cflags) --std=c++20 --debug
-LIBS := $(shell sdl2-config --libs) -lSDL2_ttf
+LIBS := $(shell sdl2-config --libs) -lSDL2_ttf -lSDL2_gfx
 
 OBJ=main.o utils.o rays.o
 

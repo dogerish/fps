@@ -1,12 +1,12 @@
 #include <iostream>
 #ifdef __linux__
 #include <SDL2/SDL.h>
-#include <SDL2/SDL2_gfxPrimitives.h>
+#include <SDL2/SDL2_rotozoom.h>
 #include <SDL2/SDL_ttf.h>
 #endif
 #ifdef __APPLE__
 #include <SDL.h>
-#include <SDL2_gfxPrimitives.h>
+#include <SDL2_rotozoom.h>
 #include <SDL_ttf.h>
 #endif
 #include <cmath>
@@ -129,6 +129,13 @@ int main(int argc, char* argv[])
 		}
 		// walls
 		{
+			SDL_Surface *zoomed,
+			*slice = SDL_CreateRGBSurfaceWithFormat(
+				textures[0]->flags,
+				1, TEXSIZE,
+				textures[0]->format->BytesPerPixel,
+				textures[0]->format->format
+			);
 			Vec2d<float> vel = fieldleft;
 			Vec2d<float> step = {
 				(fieldright.x - vel.x) / WIDTH,
@@ -138,6 +145,7 @@ int main(int argc, char* argv[])
 			SDL_Rect src = { 0, 0, 1, TEXSIZE };
 			for (int i = 0; i < WIDTH; i++)
 			{
+				src = { 0, 0, 1, TEXSIZE };
 				vel.x += step.x; vel.y += step.y; MAG(vel);
 				int side; Vec2d<int> tile;
 				Vec2d<float> d = raycast(pos, vel, tiles, side, tile);
@@ -145,14 +153,41 @@ int main(int argc, char* argv[])
 				float h = HEIGHT / d.mag;
 				h *= (h >= 0);
 				SDL_Rect r = { i, (int) ((HEIGHT - h) / 2), 1, (int) h };
+				if (r.h > HEIGHT)
+				{
+					src.y = -r.y * TEXSIZE / (float) r.h;
+					src.h -= 2 * src.y;
+					if (src.h < 1)
+					{
+						std::cout << src.y << std::endl;
+						src.y = TEXSIZE / 2;
+						src.h = 1;
+					}
+					r.y = 0;
+					r.h = HEIGHT;
+				}
+				if (src.h != slice->h)
+				{
+					SDL_FreeSurface(slice);
+					slice = SDL_CreateRGBSurfaceWithFormat(
+						textures[0]->flags,
+						1, src.h,
+						textures[0]->format->BytesPerPixel,
+						textures[0]->format->format
+					);
+				}
 				SDL_Surface* t = textures[
 					(tiles[tile.y][tile.x] >> side * 4 & 0xf) - 1
 				];
 				Uint8 v = 0xff - 0xef * (d.mag / MAXDIST);
 				SDL_SetSurfaceColorMod(t, v, v, v);
 				src.x = ((side % 2) ? pos.x + d.x - tile.x : pos.y + d.y - tile.y) * TEXSIZE;
-				SDL_BlitScaled(t, &src, surface, &r);
+				SDL_BlitSurface(t, &src, slice, NULL);
+				zoomed = zoomSurface(slice, 1, r.h / (double) src.h, SMOOTHING_ON);
+				SDL_BlitSurface(zoomed, NULL, surface, &r);
+				SDL_FreeSurface(zoomed);
 			}
+			SDL_FreeSurface(slice);
 		}
 		heading = fmod(heading, 2 * M_PI);
 		heading += (heading < 0) * 2 * M_PI;
