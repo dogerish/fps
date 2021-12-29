@@ -9,10 +9,11 @@
 #include <cmath>
 #include "utils.h"
 
+// side is stored in tile.mag
 Vec2d<float> raycast(
 	Vec2d<float> pos, Vec2d<float> vel,
 	const Uint16 tiles[][MAPW],
-	int& side, Vec2d<int>& tile
+	Vec2d<int>& tile
 )
 {
 	Vec2d<float> original = pos;
@@ -59,7 +60,7 @@ Vec2d<float> raycast(
 			|| tiles[tile.y][tile.x]
 		)
 		{
-			side = axis + (axis ? vel.y < 0 : vel.x < 0) * 2;
+			tile.mag = axis + (axis ? vel.y < 0 : vel.x < 0) * 2;
 			Vec2d<float> d = { pos.x - original.x, pos.y - original.y, -1 };
 			MAG(d);
 			return d;

@@ -16,7 +16,7 @@ int init(SDL_Window* &window, SDL_Surface* &surface)
 }
 
 void quit(
-	SDL_Surface* textures[], SDL_Surface* floortex, SDL_Surface* ceiltex,
+	SDL_Surface* textures[], SDL_Surface* floortex, SDL_Surface* ceiltex, SDL_Surface* ch,
 	SDL_Window* window, SDL_Surface* surface
 )
 {
@@ -24,6 +24,7 @@ void quit(
 	SDL_FreeSurface(floortex);
 	SDL_FreeSurface(ceiltex);
 	SDL_FreeSurface(surface);
+	SDL_FreeSurface(ch);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 }
@@ -32,7 +33,8 @@ void quit(
 int loadtex(
 	SDL_Surface* textures[],
 	SDL_Surface* &floortex,
-	SDL_Surface* &ceiltex
+	SDL_Surface* &ceiltex,
+	SDL_Surface* &ch
 )
 {
 	int err = 0;
@@ -46,5 +48,6 @@ int loadtex(
 	SDL_LockSurface(floortex);
 	err |= (ceiltex = SDL_LoadBMP("textures/ceiling.bmp")) == NULL;
 	SDL_LockSurface(ceiltex);
+	err |= (ch = SDL_LoadBMP("textures/crosshair.bmp")) == NULL;
 	return err * -1;
 }

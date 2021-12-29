@@ -22,13 +22,16 @@ template<typename T> struct Vec2d
 		ss << "(" << this->x << ", " << this->y << ")";
 		return ss.str();
 	}
+	inline bool operator== (const Vec2d<T> &other)
+	{ return other.x == this->x && other.y == this->y && other.mag == this->mag; }
 };
 
 #define MAG(vec) vec.mag = hypot(vec.x, vec.y)
 
+// side is stored in tile.mag
 Vec2d<float> raycast(
 	Vec2d<float> pos, Vec2d<float> vel,
 	const Uint16 tiles[][MAPW],
-	int& side, Vec2d<int>& tile
+	Vec2d<int>& tile
 );
 #endif
