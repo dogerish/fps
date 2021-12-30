@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #ifdef __linux__
 #include <SDL2/SDL.h>
 #include <SDL2/SDL2_rotozoom.h>
@@ -13,40 +14,15 @@
 #include "utils.h"
 #include "rays.h"
 
+#define ERROR_RETURN(code) std::cout << SDL_GetError() << std::endl; return code;
 #define FLCL_POINTERUP(surface) p = (Uint8*) (surface->pixels) + 3 * (src.y * TEXSIZE + src.x)
 #define FLCL_DRAWPOINT(y) winpixels[y * WIDTH + dest.x] = SDL_MapRGBA(surface->format, *p*v, *(p+1)*v, *(p+2)*v, 0xff)
 
 const float MAXDIST = hypot(MAPW, MAPH) * 0.9;
 // 0 = empty; 4 bits to determine the texture of each face
 // technically unfinished
-Uint16 tiles[MAPW][MAPH] = {
-	//          0                               4                               8                              12                              16                              20                              24
-	/*  0 */ 0x1234, 0xf234, 0xf234, 0xf234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 
-	/*    */ 0x1f34,      0,      0,      0, 0x123f, 0x1234, 0x1234,      0, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 
-	/*    */ 0x1f34,      0,      0,      0, 0x123f, 0x1234, 0x1234,      0, 0x1234, 0x1234, 0x1234, 0x1234,      0,      0,      0,      0, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 
-	/*    */ 0x1f34,      0,      0,      0, 0x123f, 0x1234, 0x1234,      0,      0,      0,      0, 0x1234,      0,      0,      0,      0,      0,      0, 0x1234, 0x1234,      0,      0,      0,      0, 0x1234, 
-	/*  4 */ 0x1234, 0x12f4, 0x1ff4,      0,      0, 0x123c, 0x1234, 0x1234, 0x1234, 0x1234,      0, 0x1234,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0, 0x1234, 0x1234, 0x1234, 
-	/*    */ 0x1234, 0x1234, 0x1234, 0x1ff4,      0, 0x1c3c, 0x1234, 0x1234, 0x1234, 0x1234,      0, 0x1234,      0,      0,      0, 0x1234,      0, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234,      0, 0x1234, 
-	/*    */ 0x1234, 0x1234, 0x1234, 0xff34,      0, 0xfc34,      0,      0,      0,      0,      0, 0x1234,      0,      0, 0x1234, 0x1234,      0, 0x1234, 0x1234,      0,      0,      0,      0,      0, 0x1234, 
-	/*    */ 0x1234, 0x1234, 0x1c34,      0,      0,      0,      0, 0x1234, 0x1234, 0x1234,      0,      0,      0, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234,      0,      0, 0x1234, 0x1234,      0,      0, 0x1234, 
-	/*  8 */ 0x1234, 0x1234, 0x1c34,      0,      0, 0x1234,      0, 0x1234, 0x1234, 0x1234,      0, 0x1234, 0x1234, 0x1234,      0,      0,      0,      0,      0,      0, 0x1234, 0x1234,      0,      0, 0x1234, 
-	/*    */ 0x1234, 0x1234, 0x1c34,      0, 0x123b, 0x1234,      0, 0x1234, 0x1234, 0x1234,      0, 0x1234,      0,      0,      0, 0x1234, 0x1234, 0x8234, 0x1234, 0x2234, 0x2234, 0x2234, 0x2234, 0x2234, 0x1234, 
-	/*    */ 0x1234, 0x1234, 0x1b34,      0, 0x123b, 0x1234,      0, 0x1234, 0x1234, 0x1234,      0,      0,      0,      0,      0, 0x1234, 0x1234,      0, 0x1232,      0,      0,      0,      0,      0, 0x1238, 
-	/*    */ 0x1234,      0, 0x1b34,      0, 0xa23b, 0xa234,      0, 0x1234, 0x1234, 0x1234,      0,      0,      0, 0x2232, 0x2234, 0x2234, 0x2234,      0, 0x2232,      0,      0, 0x1222, 0x1224, 0x1224, 0x1234, 
-	/* 12 */ 0x1234,      0, 0xbb34,      0,      0,      0,      0, 0x1234, 0x1234, 0x1234,      0,      0, /**/ 0,      0,      0,      0,      0,      0,      0,      0,      0, 0x1238, 0x1234, 0x1234, 0x1234, 
-	/*    */ 0x1234,      0,      0,      0, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234,      0, 0x1222, 0x1224, 0x1224, 0x1224,      0, 0x1222, 0x1224, 0x1224, 0x1234, 0x1234, 0x1234, 0x1234, 
-	/*    */ 0x1234, 0x1234, 0x1234,      0, 0x1234,      0,      0,      0, 0x1234, 0x1234, 0x1234, 0x1234,      0, 0x1232, 0x1234, 0x1234,      0,      0,      0,      0,      0, 0x1234, 0x1234, 0x1234, 0x1234, 
-	/*    */ 0x1234, 0x1234, 0x1234,      0, 0x1234,      0,      0,      0, 0x1234, 0x1234, 0x1234, 0x1234,      0,      0,      0,      0,      0, 0x1234, 0x1234, 0x1234,      0, 0x1234, 0x1234, 0x1234, 0x1234, 
-	/* 16 */ 0x1234,      0,      0,      0, 0x1234,      0, 0x1234,      0, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234,      0, 0x1234, 0x1234, 0x1234,      0,      0,      0,      0, 0x1234, 
-	/*    */ 0x1234, 0x1234, 0x1234, 0x1234, 0x1234,      0, 0x1234,      0, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234,      0, 0x1234, 0x1234, 0x1234,      0, 0x1234, 0x1234, 0x1234, 0x1234, 
-	/*    */ 0x1234,      0,      0,      0,      0,      0, 0x1234,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0, 0x1234, 0x1234, 0x1234,      0, 0x1234, 0x1234, 0x1234, 0x1234, 
-	/*    */ 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234,      0, 0x1234, 0x1234, 0x1234, 0x1234,      0,      0,      0,      0,      0, 0x1234,      0,      0, 0x1234, 
-	/* 20 */ 0x1234, 0x1234,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0, 0x1234, 0x1234,      0, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234,      0, 0x1234, 0x1234, 
-	/*    */ 0x1234, 0x1234,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0, 0x1234, 0x1234,      0, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234,      0,      0, 0x1234, 
-	/*    */ 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234,      0, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234,      0, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234,      0, 0x1234, 
-	/*    */ 0x1234, 0x1234,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0, 0x1234, 
-	/* 24 */ 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 0x1234, 
-};
+#define MAPVER 1
+Uint16 tiles[MAPW][MAPH];
 SDL_Surface* textures[15];
 SDL_Surface* floortex;
 SDL_Surface* ceiltex;
@@ -63,16 +39,21 @@ int main(int argc, char* argv[])
 {
 	SDL_Window*  window;
 	SDL_Surface* surface;
-	if (init(window, surface) || TTF_Init())
-	{
-		std::cout << SDL_GetError() << std::endl;
-		return 1;
-	}
+	if (init(window, surface) || TTF_Init()) { ERROR_RETURN(1); }
 	SDL_SetEventFilter(filter, NULL);
-	if (loadtex(textures, floortex, ceiltex, ch))
+	if (loadtex(textures, floortex, ceiltex, ch)) { ERROR_RETURN(1); }
+	// load map
 	{
-		std::cout << SDL_GetError() << std::endl;
-		return 1;
+		std::ifstream file("maps/maze", std::ios::binary);
+		int v;
+		file >> v;
+		if (v != MAPVER)
+			std::cerr
+			<< "Invalid map version. Expected " << MAPVER
+			<< ", but got " << v << std::endl;
+		else
+			file.ignore().read((char*) tiles, MAPH * MAPW * 2);
+		file.close();
 	}
 	Vec2d<float> pos = { MAPW / 2.f, MAPH / 2.f, -1};
 	float heading = 0;
@@ -231,6 +212,12 @@ int main(int argc, char* argv[])
 			case SDLK_e:    editmode = !editmode; break;
 			case SDLK_DOWN: facetex--; break;
 			case SDLK_UP:   facetex++; break;
+			case SDLK_o:
+				std::ofstream file("maps/maze", std::ios::binary);
+				file << MAPVER << std::endl;
+				file.write((char*) tiles, MAPH * MAPW * 2);
+				file.close();
+				break;
 			}
 			// update the face
 			if (editmode && facetex != oldtex)
