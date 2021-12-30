@@ -2,11 +2,17 @@
 #define UTILS
 
 #ifdef __linux__
-#include <SDL2/SDL.h>
+#define SDL2_H <SDL2/SDL.h>
+#define SDL2_ROTO_H <SDL2/SDL2_rotozoom.h>
+#define SDL2_TTF_H <SDL2/SDL_ttf.h>
 #endif
 #ifdef __APPLE__
-#include <SDL.h>
+#define SDL2_H <SDL.h>
+#define SDL2_ROTO_H <SDL2_rotozoom.h>
+#define SDL2_TTF_H <SDL_ttf.h>
 #endif
+
+#include SDL2_H
 
 #define WIDTH   720
 #define HEIGHT  480

@@ -1,10 +1,5 @@
 #include "utils.h"
-#ifdef __linux__
-#include <SDL2/SDL.h>
-#endif
-#ifdef __APPLE__
-#include <SDL.h>
-#endif
+#include SDL2_H
 
 int init(SDL_Window* &window, SDL_Surface* &surface)
 {

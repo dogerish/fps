@@ -1,13 +1,6 @@
 #include "rays.h"
-#include <iostream>
-#ifdef __linux__
-#include <SDL2/SDL.h>
-#endif
-#ifdef __APPLE__
-#include <SDL.h>
-#endif
-#include <cmath>
 #include "utils.h"
+#include SDL2_H
 
 // side is stored in tile.mag
 Vec2d<float> raycast(

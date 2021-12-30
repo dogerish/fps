@@ -1,15 +1,10 @@
 #ifndef RAYS
 #define RAYS
-#ifdef __linux__
-#include <SDL2/SDL.h>
-#endif
-#ifdef __APPLE__
-#include <SDL.h>
-#endif
 #include <cmath>
 #include <string>
 #include <sstream>
 #include "utils.h"
+#include SDL2_H
 
 template<typename T> struct Vec2d
 {
