@@ -2,11 +2,10 @@
 Raycaster made by me, algorithms inspired by online sources.
 
 * Uses C++ and SDL 2
-* No support for Windows, sorry
-* Add support for Windows if you want to be a legend
+* Limited support for Windows: extract `game-win32.zip` and run the executable. If you have problems create an issue.
 * I haven't tested it on Linux, but it might work.
 * `make` to compile. Comment the `--debug` in like the third line of the makefile and then `make redo` to get a non-debug binary, which might be a bit faster.
-* Textures that aren't lame are from Cube 2: Sauerbraten
+* Textures that aren't lame are from Cube 2: Sauerbraten. Check out the `locations.txt` file there.
 
 ## Blog I Guess
 1. [![video](thumbnails/2021-12-21%20at%2011.29.36.png)](https://streamable.com/1bni67)<br/>
@@ -61,4 +60,7 @@ Raycaster made by me, algorithms inspired by online sources.
 
 16. [![video](thumbnails/2021-12-29%20at%2013.05.33.png)](https://streamable.com/otvhna)<br/>
    2021-12-29 at 13.05.33: Added texture editing
+
+17. [![video](thumbnails/toaster.png)](https://streamable.com/ffg9u2)<br/>
+   2021-12-31 at 14.38.47: Game running on Windows! *Video by J-Toastie*
 
