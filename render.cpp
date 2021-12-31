@@ -2,7 +2,6 @@
 #include <cmath>
 #include "utils.h"
 #include SDL2_H
-#include SDL2_ROTO_H
 #include "rays.h"
 
 // value to use for color mod to give fog
@@ -53,13 +52,6 @@ void renderfloors(
 	SDL_UnlockSurface(surface);
 }
 
-#define MAKESURFACE(h)\
-	SDL_CreateRGBSurfaceWithFormat(\
-		textures[0]->flags,\
-		1, h,\
-		textures[0]->format->BytesPerPixel,\
-		textures[0]->format->format\
-	)
 void renderwalls(
 	SDL_Surface* surface,
 	Vec2d<float> pos, float heading,
@@ -70,7 +62,6 @@ void renderwalls(
 	SDL_Surface* textures[]
 )
 {
-	SDL_Surface *zoomed, *slice = MAKESURFACE(TEXSIZE);
 	// linear stepping since monitor isn't spherical
 	Vec2d<float> step = {
 		(fieldright.x - vel.x) / WIDTH,
@@ -99,20 +90,14 @@ void renderwalls(
 			r.y = 0; r.h = HEIGHT;
 		}
 		else { src.y = 0; src.h = TEXSIZE; }
-		// use a surface with the right size for this slice
-		if (src.h != slice->h) { SDL_FreeSurface(slice); slice = MAKESURFACE(src.h); }
 		// pick the texture, implement fog, and highlight it if needed
 		SDL_Surface* t = textures[(tiles[tile.y][tile.x] >> tile.mag * 4 & 0xf) - 1];
 		Uint8 v = FOGMOD(d.mag);
 		SDL_SetSurfaceColorMod(t, v, v * !(editmode && tile == hl), v);
 		// sample at the right x location of the texture
 		src.x = ((tile.mag % 2) ?  pos.x + d.x - tile.x : pos.y + d.y - tile.y) * TEXSIZE;
-		// zoom and paste the slice on the screen
-		SDL_BlitSurface(t, &src, slice, NULL);
-		zoomed = zoomSurface(slice, 1, r.h / (double) src.h, SMOOTHING_ON);
-		SDL_BlitSurface(zoomed, NULL, surface, &r);
-		SDL_FreeSurface(zoomed);
+		// scale and paste the slice on the screen
+		SDL_BlitScaled(t, &src, surface, &r);
 	}
-	SDL_FreeSurface(slice);
 }
 

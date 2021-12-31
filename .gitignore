@@ -1,3 +1,4 @@
 *.swp
 Session.vim
 *.o
+logfile.txt

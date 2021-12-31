@@ -1,11 +1,19 @@
-GCC=g++
-CFLAGS := $(shell sdl2-config --cflags) --std=c++20 --debug
-LIBS := $(shell sdl2-config --libs) -lSDL2_ttf -lSDL2_gfx
+ifdef CROSS
+	GCC=i686-w64-mingw32-g++
+	SDL2_CFG=/usr/local/cross-tools/i686-w64-mingw32/bin/sdl2-config
+	TARGET=game-win32.exe
+else
+	GCC=g++
+	SDL2_CFG=sdl2-config
+	TARGET=game
+endif
+CFLAGS := $(shell ${SDL2_CFG} --cflags) --std=c++20 #--debug
+LIBS := $(shell ${SDL2_CFG} --libs) -lSDL2_ttf
 
 OBJ=main.o utils.o rays.o render.o
 
-game: $(OBJ)
-	$(GCC) $(CFLAGS) $(LIBS) $(OBJ) -o game
+${TARGET}: $(OBJ)
+	$(GCC) $(CFLAGS) $(OBJ) $(LIBS) -o $(TARGET)
 
 main.o: main.cpp utils.h rays.h render.h
 	$(GCC) $(CFLAGS) -c main.cpp

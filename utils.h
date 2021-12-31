@@ -3,12 +3,9 @@
 
 #ifdef __linux__
 #define SDL2_H <SDL2/SDL.h>
-#define SDL2_ROTO_H <SDL2/SDL2_rotozoom.h>
 #define SDL2_TTF_H <SDL2/SDL_ttf.h>
-#endif
-#ifdef __APPLE__
+#else
 #define SDL2_H <SDL.h>
-#define SDL2_ROTO_H <SDL2_rotozoom.h>
 #define SDL2_TTF_H <SDL_ttf.h>
 #endif
 

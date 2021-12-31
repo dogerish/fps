@@ -1,14 +1,17 @@
 #include <iostream>
 #include <fstream>
+#include <filesystem>
+#define _USE_MATH_DEFINES
 #include <cmath>
 #include "utils.h"
 #include SDL2_H
 #include SDL2_TTF_H
 #include "rays.h"
 #include "render.h"
+namespace fs = std::filesystem;
 
 #define QUITGAME quit(textures, floortex, ceiltex, ch, window, surface)
-#define ERROR_RETURN(code) std::cout << SDL_GetError() << std::endl; QUITGAME; return code;
+#define ERROR_RETURN(code) logfile << SDL_GetError() << std::endl; QUITGAME; return code;
 
 #define MAPVER 1
 Uint16 tiles[MAPW][MAPH];
@@ -16,9 +19,10 @@ SDL_Surface* textures[15];
 SDL_Surface* floortex;
 SDL_Surface* ceiltex;
 SDL_Surface* ch; // crosshair
+std::ofstream logfile("logfile.txt", std::ofstream::out);
 float fov = (M_PI / 2) / 2;
 
-int filter(void* arg, SDL_Event* e)
+static int SDLCALL filter(void* arg, SDL_Event* e)
 {
 	return e->type == SDL_QUIT ||
 	       (e->type == SDL_KEYDOWN && !e->key.repeat);
@@ -31,11 +35,11 @@ int loadmap(std::string name)
 	std::ifstream file(name, std::ios::binary);
 	file >> v;
 	if (v != MAPVER && ++e)
-		std::cerr << "Invalid map version. Expected " << MAPVER << ", but got " << v;
+		logfile << "Invalid map version. Expected " << MAPVER << ", but got " << v;
 	else
 		file.ignore().read((char*) tiles, MAPH * MAPW * 2);
 	if (!file.good() && ++e)
-		std::cerr << "Error while loading '" << name << "'" << std::endl;
+		logfile << "Error while loading '" << name << "'" << std::endl;
 	file.close();
 	return e;
 }
@@ -47,13 +51,15 @@ int savemap(std::string name)
 	std::ofstream file(name, std::ios::binary);
 	file << MAPVER << std::endl;
 	file.write((char*) tiles, MAPH * MAPW * 2);
-	if (!file.good() && ++e) std::cerr << "Error while saving '" << name << "'" << std::endl;
+	if (!file.good() && ++e) logfile << "Error while saving '" << name << "'" << std::endl;
 	file.close();
 	return e;
 }
 
 int main(int argc, char* argv[])
 {
+	// go to the app's directory
+	fs::current_path(((fs::path) argv[0]).parent_path());
 	SDL_Window*  window;
 	SDL_Surface* surface;
 	if (init(window, surface) || TTF_Init()) { ERROR_RETURN(1); }
@@ -66,7 +72,7 @@ int main(int argc, char* argv[])
 	bool editmode = false;
 	Vec2d<int> hl;
 	TTF_Font* font = TTF_OpenFont("Sans.ttf", 12);
-	if (!font) std::cout << SDL_GetError() << std::endl;
+	if (!font) logfile << SDL_GetError() << std::endl;
 	SDL_Surface* text;
 	char infostr[64];
 	Uint32 lasttick = SDL_GetTicks();
@@ -116,7 +122,7 @@ int main(int argc, char* argv[])
 		// process key event
 		if (gotevent && e.type == SDL_KEYDOWN)
 		{
-			Uint16 current = tiles[hl.y][hl.x];
+			Uint16 current = editmode ? tiles[hl.y][hl.x] : 0;
 			Uint16 facetex = current >> hl.mag * 4 & 0xf;
 			Uint16 oldtex  = facetex;
 			switch (e.key.keysym.sym)
@@ -138,5 +144,6 @@ int main(int argc, char* argv[])
 	}
 	TTF_CloseFont(font);
 	QUITGAME;
+	logfile.close();
 	return 0;
 }

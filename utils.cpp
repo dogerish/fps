@@ -40,9 +40,7 @@ int loadtex(
 		err |= (textures[i] = SDL_LoadBMP(filename)) == NULL;
 	}
 	err |= (floortex = SDL_LoadBMP("textures/floor.bmp")) == NULL;
-	SDL_LockSurface(floortex);
 	err |= (ceiltex = SDL_LoadBMP("textures/ceiling.bmp")) == NULL;
-	SDL_LockSurface(ceiltex);
 	err |= (ch = SDL_LoadBMP("textures/crosshair.bmp")) == NULL;
 	return err * -1;
 }
