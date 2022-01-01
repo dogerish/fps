@@ -14,7 +14,7 @@ LIBS := $(shell ${SDL2_CFG} --libs) -lSDL2_ttf
 OBJ := main.o utils.o rays.o render.o
 OBJ := $(addprefix $(TDIR)/,$(OBJ))
 
-TARGET=$(TDIR)/game$(EXT)
+TARGET=game$(EXT)
 $(TARGET): $(TDIR) $(OBJ)
 	$(CXX) $(CXXFLAGS) $(OBJ) $(LIBS) -o $@
 
