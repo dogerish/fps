@@ -28,7 +28,7 @@ static int SDLCALL filter(void* arg, SDL_Event* e)
 	       (e->type == SDL_KEYDOWN && !e->key.repeat);
 }
 
-int loadmap(std::string name)
+int loadmap(std::string name, bool reset_on_fail = false)
 {
 	int e = 0, v;
 	name = "maps/" + name;
@@ -39,7 +39,13 @@ int loadmap(std::string name)
 	else
 		file.ignore().read((char*) tiles, MAPH * MAPW * 2);
 	if (!file.good() && ++e)
+	{
 		logfile << "Error while loading '" << name << "'" << std::endl;
+		// set to default map
+		if (reset_on_fail)
+			for (int y = 0; y < MAPH; y++) for (int x = 0; x < MAPW; x++)
+				tiles[y][x] = !(x % (MAPW - 1) && y % (MAPH - 1)) * 0x1111;
+	}
 	file.close();
 	return e;
 }
@@ -65,7 +71,7 @@ int main(int argc, char* argv[])
 	if (init(window, surface) || TTF_Init()) { ERROR_RETURN(1); }
 	SDL_SetEventFilter(filter, NULL);
 	if (loadtex(textures, floortex, ceiltex, ch)) { ERROR_RETURN(1); }
-	loadmap("maze");
+	loadmap("maze", true);
 	Vec2d<float> pos = { MAPW / 2.f, MAPH / 2.f, -1};
 	float heading = 0;
 	Vec2d<float> fieldleft, fieldcenter = { 1, 0, 1 }, fieldright;
