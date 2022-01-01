@@ -1,33 +1,34 @@
 ifdef CROSS
-	GCC=i686-w64-mingw32-g++
+	CXX=i686-w64-mingw32-g++
 	SDL2_CFG=/usr/local/cross-tools/i686-w64-mingw32/bin/sdl2-config
-	TARGET=game-win32.exe
+	TDIR=win32
+	EXT=.exe
 else
-	GCC=g++
+	CXX=g++
 	SDL2_CFG=sdl2-config
-	TARGET=game
+	TDIR=.
 endif
-CFLAGS := $(shell ${SDL2_CFG} --cflags) --std=c++20 #--debug
+CXXFLAGS := $(shell ${SDL2_CFG} --cflags) --std=c++20 #--debug
 LIBS := $(shell ${SDL2_CFG} --libs) -lSDL2_ttf
 
-OBJ=main.o utils.o rays.o render.o
+OBJ := main.o utils.o rays.o render.o
+OBJ := $(addprefix $(TDIR)/,$(OBJ))
 
-${TARGET}: $(OBJ)
-	$(GCC) $(CFLAGS) $(OBJ) $(LIBS) -o $(TARGET)
+TARGET=$(TDIR)/game$(EXT)
+$(TARGET): $(TDIR) $(OBJ)
+	$(CXX) $(CXXFLAGS) $(OBJ) $(LIBS) -o $@
 
-main.o: main.cpp utils.h rays.h render.h
-	$(GCC) $(CFLAGS) -c main.cpp
+$(TDIR): ; mkdir $(TDIR)
 
-utils.o: utils.cpp utils.h
-	$(GCC) $(CFLAGS) -c utils.cpp
+$(wordlist 2,$(words $(OBJ)),$(OBJ)): $(TDIR)/%.o : %.cpp %.h
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-rays.o: rays.cpp rays.h utils.h
-	$(GCC) $(CFLAGS) -c rays.cpp
+$(TDIR)/main.o: main.cpp render.h
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-render.o: render.cpp render.h rays.h utils.h
-	$(GCC) $(CFLAGS) -c render.cpp
+$(filter-out $(TDIR)/utils.o,$(OBJ)): utils.h
+$(addprefix $(TDIR)/,main.o render.o): rays.h
 
-clean:
-	rm $(OBJ)
-redo:
-	make clean && make
+.PHONY: redo clean
+redo: clean $(TARGET)
+clean: ; rm $(OBJ) 2> /dev/null || true
