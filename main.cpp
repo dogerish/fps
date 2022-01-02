@@ -13,7 +13,10 @@
 namespace fs = std::filesystem;
 
 #define QUITGAME quit(textures, floortex, ceiltex, ch, window, surface)
-#define ERROR_RETURN(code) logfile << SDL_GetError() << std::endl; QUITGAME; return code;
+#define ERROR_RETURN(code) \
+	logfile << SDL_GetError() << std::endl; QUITGAME; \
+	logfile.close(); \
+	return code;
 
 #define MAPVER 1
 Uint16 tiles[MAPW][MAPH];
@@ -78,7 +81,7 @@ int main(int argc, char* argv[])
 	if (loadtex(textures, floortex, ceiltex, ch)) { ERROR_RETURN(2); }
 	loadmap("maze", true);
 	TTF_Font* font = TTF_OpenFont("font.ttf", 14);
-	if (font == NULL) { logfile << TTF_GetError() << std::endl; return 3; }
+	if (font == NULL) { logfile << TTF_GetError() << std::endl; logfile.close(); return 3; }
 	char infostr[64]; SDL_Surface* text;
 	// set up gui things
 	std::vector<GUIThing> guithings;
