@@ -1,6 +1,7 @@
 # fps - First Person Raycaster
 Raycaster made by me, algorithms inspired by online sources.
 
+* If you have ideas, you can post them on [this Google Doc](https://docs.google.com/document/d/1FT-uGfJ4u9irJ9EBzfeAzoy5IvE1mD8UnRtnMjZ8P5U/edit?usp=sharing). Please follow the guidelines posted there.
 * Uses C++ and SDL 2
 * Limited support for Windows: extract `game-win32.zip` and run the executable. If you have problems create an issue.
 * I haven't tested it on Linux, but it might work.
