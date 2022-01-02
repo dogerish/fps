@@ -66,47 +66,55 @@ int main(int argc, char* argv[])
 {
 	// go to the app's directory
 	fs::current_path(((fs::path) argv[0]).parent_path());
+	// initialize stuff
 	SDL_Window*  window;
 	SDL_Surface* surface;
 	if (init(window, surface) || TTF_Init()) { ERROR_RETURN(1); }
 	SDL_SetEventFilter(filter, NULL);
+	// load textures and map
 	if (loadtex(textures, floortex, ceiltex, ch)) { ERROR_RETURN(1); }
 	loadmap("maze", true);
-	Vec2d<float> pos = { MAPW / 2.f, MAPH / 2.f, -1};
-	float heading = 0;
-	Vec2d<float> fieldleft, fieldcenter = { 1, 0, 1 }, fieldright;
-	bool editmode = false;
-	Vec2d<int> hl;
 	TTF_Font* font = TTF_OpenFont("Sans.ttf", 12);
 	if (!font) logfile << SDL_GetError() << std::endl;
-	SDL_Surface* text;
 	char infostr[64];
-	Uint32 lasttick = SDL_GetTicks();
+	SDL_Surface* text;
+	// set up variables for game
+	Vec2d<float> pos = { MAPW / 2.f, MAPH / 2.f, -1};
+	float heading = 0;
+	// normalized coordinates from leftmost fov to rightmost
+	Vec2d<float> fieldleft, fieldcenter = { 1, 0, 1 }, fieldright;
+	// editing variables
+	bool editmode = false; Vec2d<int> hl;
+	// main loop variables
+	Uint32 lasttick = SDL_GetTicks(), tdiff = 0;
 	const Uint8* kb = SDL_GetKeyboardState(NULL);
 	bool gotevent = false;
+	// main loop
 	for (SDL_Event e; e.type != SDL_QUIT; gotevent = SDL_PollEvent(&e))
 	{
-		float tdiff = (SDL_GetTicks() - lasttick);
-		lasttick = SDL_GetTicks();
 		// update player
 		{
-			float multiplier = (kb[SDL_SCANCODE_W] - kb[SDL_SCANCODE_S]) / 250.f;
+			// positive or negative depending on what keys are pressed
+			float multiplier = (kb[SDL_SCANCODE_W] - kb[SDL_SCANCODE_S]) * (float) tdiff / 250.f;
 			Vec2d<float> last = pos;
-			pos.x += multiplier * tdiff * fieldcenter.x;
+			// update position accounting for heading, and then checking collision
+			pos.x += multiplier * fieldcenter.x;
 			if (tiles[(int) pos.y][(int) pos.x]) pos.x = last.x;
-			pos.y += multiplier * tdiff * fieldcenter.y;
+			pos.y += multiplier * fieldcenter.y;
 			if (tiles[(int) pos.y][(int) pos.x]) pos.y = last.y;
-			heading += (kb[SDL_SCANCODE_D] - kb[SDL_SCANCODE_A]) * tdiff / 400.f;
+			// turning
+			heading += (kb[SDL_SCANCODE_D] - kb[SDL_SCANCODE_A]) * (float) tdiff / 400.f;
+			// update fov variables
 			fieldleft   = { cos(heading - fov), sin(heading - fov), 1 };
 			fieldcenter = { cos(heading),       sin(heading),       1 };
 			fieldright  = { cos(heading + fov), sin(heading + fov), 1 };
 			// highlight the face under the crosshair
 			if (editmode) raycast(pos, fieldcenter, tiles, hl);
 		}
-		// render
+		// render (floor and ceiling) and walls
 		renderfloors(surface, pos, fieldleft, fieldright, floortex, ceiltex);
 		renderwalls(surface, pos, heading, editmode, tiles, fieldleft, fieldright, hl, textures);
-		// info text
+		// render info text
 		heading = fmod(heading, 2 * M_PI);
 		heading += (heading < 0) * 2 * M_PI;
 		sprintf(
@@ -118,16 +126,16 @@ int main(int argc, char* argv[])
 		text = TTF_RenderText_Solid(font, infostr, (SDL_Color) { 255, 255, 255, 255 });
 		SDL_Rect rect = { 0, 0, text->w, text->h };
 		SDL_BlitSurface(text, NULL, surface, &rect);
+		SDL_FreeSurface(text);
 		// crosshair
 		rect = { (WIDTH - ch->w) / 2, (HEIGHT - ch->h) / 2, ch->w, ch->h };
 		SDL_BlitSurface(ch, NULL, surface, &rect);
-
 		SDL_UpdateWindowSurface(window);
-		SDL_FreeSurface(text);
 
 		// process key event
 		if (gotevent && e.type == SDL_KEYDOWN)
 		{
+			// texture information for the highlighted tile/face
 			Uint16 current = editmode ? tiles[hl.y][hl.x] : 0;
 			Uint16 facetex = current >> hl.mag * 4 & 0xf;
 			Uint16 oldtex  = facetex;
@@ -138,7 +146,7 @@ int main(int argc, char* argv[])
 			case SDLK_UP:   facetex++; break;
 			case SDLK_o:    savemap("maze"); break;
 			}
-			// update the face
+			// update the texture if needed
 			if (editmode && facetex != oldtex)
 			{
 				facetex = (facetex - 1) % 15 + 1;
@@ -147,6 +155,9 @@ int main(int argc, char* argv[])
 				                    | facetex << hl.mag * 4;
 			}
 		}
+		// tick the clock
+		tdiff = (SDL_GetTicks() - lasttick);
+		lasttick = SDL_GetTicks();
 	}
 	TTF_CloseFont(font);
 	QUITGAME;
