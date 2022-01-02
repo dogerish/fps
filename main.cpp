@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
+#include <vector>
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include "utils.h"
@@ -8,6 +9,7 @@
 #include SDL2_TTF_H
 #include "rays.h"
 #include "render.h"
+#include "gui.h"
 namespace fs = std::filesystem;
 
 #define QUITGAME quit(textures, floortex, ceiltex, ch, window, surface)
@@ -25,7 +27,8 @@ float fov = (M_PI / 2) / 2;
 static int SDLCALL filter(void* arg, SDL_Event* e)
 {
 	return e->type == SDL_QUIT ||
-	       (e->type == SDL_KEYDOWN && !e->key.repeat);
+	       (e->type == SDL_KEYDOWN && !e->key.repeat) ||
+	       e->type == SDL_MOUSEBUTTONDOWN;
 }
 
 int loadmap(std::string name, bool reset_on_fail = false)
@@ -74,9 +77,29 @@ int main(int argc, char* argv[])
 	// load textures and map
 	if (loadtex(textures, floortex, ceiltex, ch)) { ERROR_RETURN(2); }
 	loadmap("maze", true);
-	TTF_Font* font = TTF_OpenFont("Sans.ttf", 12);
+	TTF_Font* font = TTF_OpenFont("font.ttf", 14);
 	if (font == NULL) { logfile << TTF_GetError() << std::endl; return 3; }
 	char infostr[64]; SDL_Surface* text;
+	// set up gui things
+	std::vector<GUIThing> guithings;
+	{
+		GUIThing tmp;
+		tmp.s = button(font, "Save Map");
+		tmp.r = { 0, 0, tmp.s->w, tmp.s->h };
+		guithings.push_back(tmp);
+		tmp.s = button(font, "Load Map");
+		tmp.r = { tmp.r.w + 5, (tmp.r.h - tmp.s->h) / 2, tmp.s->w, tmp.s->h };
+		guithings.push_back(tmp);
+	}
+	GUIThing guibdr = backdrop(guithings, font, "GUI Things");
+	// move gui things to center of screen
+	{
+		SDL_Point offset = { (WIDTH - guibdr.r.w) / 2, (HEIGHT - guibdr.r.h) / 2 };
+		offset.x -= guibdr.r.x; offset.y -= guibdr.r.y;
+		guibdr.r.x += offset.x; guibdr.r.y += offset.y;
+		for (GUIThing& g : guithings) { g.r.x += offset.x; g.r.y += offset.y; }
+	}
+	bool showgui = false;
 	// set up variables for game
 	Vec2d<float> pos = { MAPW / 2.f, MAPH / 2.f, -1};
 	float heading = 0;
@@ -87,9 +110,9 @@ int main(int argc, char* argv[])
 	// main loop variables
 	Uint32 lasttick = SDL_GetTicks(), tdiff = 0;
 	const Uint8* kb = SDL_GetKeyboardState(NULL);
-	bool gotevent = false;
+	bool running = true;
 	// main loop
-	for (SDL_Event e; e.type != SDL_QUIT; gotevent = SDL_PollEvent(&e))
+	while (running)
 	{
 		// update player
 		{
@@ -138,29 +161,50 @@ int main(int argc, char* argv[])
 		// crosshair
 		rect = { (WIDTH - ch->w) / 2, (HEIGHT - ch->h) / 2, ch->w, ch->h };
 		SDL_BlitSurface(ch, NULL, surface, &rect);
+		// gui
+		if (showgui)
+		{
+			SDL_BlitSurface(guibdr.s, NULL, surface, &guibdr.r);
+			for (GUIThing g : guithings) SDL_BlitSurface(g.s, NULL, surface, &g.r);
+		}
 		SDL_UpdateWindowSurface(window);
 
-		// process key event
-		if (gotevent && e.type == SDL_KEYDOWN)
+		// process events
+		for (SDL_Event e; SDL_PollEvent(&e) && (running = e.type != SDL_QUIT);)
 		{
-			// texture information for the highlighted tile/face
-			Uint16 current = editmode ? tiles[hl.y][hl.x] : 0;
-			Uint16 facetex = current >> hl.mag * 4 & 0xf;
-			Uint16 oldtex  = facetex;
-			switch (e.key.keysym.sym)
+			if (e.type == SDL_KEYDOWN)
 			{
-			case SDLK_e:    editmode = !editmode; break;
-			case SDLK_DOWN: facetex--; break;
-			case SDLK_UP:   facetex++; break;
-			case SDLK_o:    savemap("maze"); break;
+				// texture information for the highlighted tile/face
+				Uint16 current = editmode ? tiles[hl.y][hl.x] : 0;
+				Uint16 facetex = current >> hl.mag * 4 & 0xf;
+				Uint16 oldtex  = facetex;
+				switch (e.key.keysym.sym)
+				{
+				case SDLK_e:    editmode = !editmode; break;
+				case SDLK_DOWN: facetex--; break;
+				case SDLK_UP:   facetex++; break;
+				case SDLK_ESCAPE: showgui = !showgui; break;
+				}
+				// update the texture if needed
+				if (editmode && facetex != oldtex)
+				{
+					facetex = (facetex - 1) % 15 + 1;
+					facetex += (facetex <= 0) * 15;
+					tiles[hl.y][hl.x] = current & ~(0xf << hl.mag * 4)
+							    | facetex << hl.mag * 4;
+				}
 			}
-			// update the texture if needed
-			if (editmode && facetex != oldtex)
+			if (showgui && e.type == SDL_MOUSEBUTTONDOWN)
 			{
-				facetex = (facetex - 1) % 15 + 1;
-				facetex += (facetex <= 0) * 15;
-				tiles[hl.y][hl.x] = current & ~(0xf << hl.mag * 4)
-				                    | facetex << hl.mag * 4;
+				SDL_Point p = { e.button.x, e.button.y };
+				for (GUIThing g : guithings)
+				{
+					if (SDL_PointInRect(&p, &g.r))
+					{
+						std::cout << "bruh" << std::endl;
+						break;
+					}
+				}
 			}
 		}
 		// tick the clock
@@ -168,6 +212,8 @@ int main(int argc, char* argv[])
 		lasttick = SDL_GetTicks();
 	}
 	TTF_CloseFont(font);
+	for (GUIThing g : guithings) SDL_FreeSurface(g.s);
+	SDL_FreeSurface(guibdr.s);
 	QUITGAME;
 	logfile.close();
 	return 0;

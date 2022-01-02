@@ -8,10 +8,10 @@ else
 	SDL2_CFG=sdl2-config
 	TDIR=.
 endif
-CXXFLAGS := $(shell ${SDL2_CFG} --cflags) --std=c++20 #--debug
+CXXFLAGS := $(shell ${SDL2_CFG} --cflags) --std=c++20 --debug
 LIBS := $(shell ${SDL2_CFG} --libs) -lSDL2_ttf
 
-OBJ := main.o utils.o rays.o render.o
+OBJ := main.o utils.o rays.o render.o gui.o
 OBJ := $(addprefix $(TDIR)/,$(OBJ))
 
 TARGET=game$(EXT)
@@ -23,7 +23,7 @@ $(TDIR): ; mkdir $(TDIR)
 $(wordlist 2,$(words $(OBJ)),$(OBJ)): $(TDIR)/%.o : %.cpp %.h
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-$(TDIR)/main.o: main.cpp render.h
+$(TDIR)/main.o: main.cpp render.h gui.h
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 $(filter-out $(TDIR)/utils.o,$(OBJ)): utils.h
