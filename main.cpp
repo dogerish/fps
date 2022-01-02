@@ -72,12 +72,11 @@ int main(int argc, char* argv[])
 	if (init(window, surface) || TTF_Init()) { ERROR_RETURN(1); }
 	SDL_SetEventFilter(filter, NULL);
 	// load textures and map
-	if (loadtex(textures, floortex, ceiltex, ch)) { ERROR_RETURN(1); }
+	if (loadtex(textures, floortex, ceiltex, ch)) { ERROR_RETURN(2); }
 	loadmap("maze", true);
 	TTF_Font* font = TTF_OpenFont("Sans.ttf", 12);
-	if (!font) logfile << SDL_GetError() << std::endl;
-	char infostr[64];
-	SDL_Surface* text;
+	if (font == NULL) { logfile << TTF_GetError() << std::endl; return 3; }
+	char infostr[64]; SDL_Surface* text;
 	// set up variables for game
 	Vec2d<float> pos = { MAPW / 2.f, MAPH / 2.f, -1};
 	float heading = 0;
@@ -95,7 +94,8 @@ int main(int argc, char* argv[])
 		// update player
 		{
 			// positive or negative depending on what keys are pressed
-			float multiplier = (kb[SDL_SCANCODE_W] - kb[SDL_SCANCODE_S]) * (float) tdiff / 250.f;
+			float multiplier = (kb[SDL_SCANCODE_W] - kb[SDL_SCANCODE_S])
+			                   * (float) tdiff / 250.f;
 			Vec2d<float> last = pos;
 			// update position accounting for heading, and then checking collision
 			pos.x += multiplier * fieldcenter.x;
@@ -103,7 +103,8 @@ int main(int argc, char* argv[])
 			pos.y += multiplier * fieldcenter.y;
 			if (tiles[(int) pos.y][(int) pos.x]) pos.y = last.y;
 			// turning
-			heading += (kb[SDL_SCANCODE_D] - kb[SDL_SCANCODE_A]) * (float) tdiff / 400.f;
+			heading += (kb[SDL_SCANCODE_D] - kb[SDL_SCANCODE_A]) 
+			           * (float) tdiff / 400.f;
 			// update fov variables
 			fieldleft   = { cos(heading - fov), sin(heading - fov), 1 };
 			fieldcenter = { cos(heading),       sin(heading),       1 };
@@ -113,7 +114,14 @@ int main(int argc, char* argv[])
 		}
 		// render (floor and ceiling) and walls
 		renderfloors(surface, pos, fieldleft, fieldright, floortex, ceiltex);
-		renderwalls(surface, pos, heading, editmode, tiles, fieldleft, fieldright, hl, textures);
+		renderwalls(
+			surface,
+			pos, heading, editmode,
+			tiles,
+			fieldleft, fieldright,
+			hl,
+			textures
+		);
 		// render info text
 		heading = fmod(heading, 2 * M_PI);
 		heading += (heading < 0) * 2 * M_PI;
