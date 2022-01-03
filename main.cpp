@@ -27,10 +27,12 @@ SDL_Surface* ch; // crosshair
 std::ofstream logfile("logfile.txt", std::ofstream::out);
 float fov = (M_PI / 2) / 2;
 
-static int SDLCALL filter(void* arg, SDL_Event* e)
+static int SDLCALL filter(void* userdata, SDL_Event* e)
 {
+	int focused = *((int*) userdata);
 	return e->type == SDL_QUIT ||
-	       (e->type == SDL_KEYDOWN && !e->key.repeat) ||
+	       e->type == SDL_TEXTINPUT ||
+	       (e->type == SDL_KEYDOWN && (focused >= 0 || !e->key.repeat)) ||
 	       e->type == SDL_MOUSEBUTTONDOWN;
 }
 
@@ -68,6 +70,37 @@ int savemap(std::string name)
 	return e;
 }
 
+enum ThingAlignment {
+	/************************************************/ ALIGN_TOP = 0,
+	/************* Reference Rectangle **************/ ALIGN_MIDDLE = 1,
+	/************************************************/ ALIGN_BOTTOM = 2,
+	ALIGN_LEFT = 3, ALIGN_CENTER = 4, ALIGN_RIGHT = 5,
+};
+// returns the rect of the thing that was added
+SDL_Rect addthing(
+	std::vector<GUIThing>& guithings,
+	GUIThing thing,
+	ThingAlignment align = ALIGN_CENTER,
+	SDL_Rect *ref = NULL,
+	int margin = 5
+)
+{
+	if (!ref && !guithings.size()) { guithings.push_back(thing); return thing.r; }
+	if (!ref) ref = &guithings.back().r;
+	if (align < 3)
+	{
+		thing.r.x = ref->x + ref->w + margin;
+		thing.r.y = ref->y + align * (ref->h - thing.r.h) / 2;
+	}
+	else
+	{
+		thing.r.y = ref->y + ref->h + margin;
+		thing.r.x = ref->x + (align - 3) * (ref->w - thing.r.w) / 2;
+	}
+	guithings.push_back(thing);
+	return thing.r;
+}
+
 int main(int argc, char* argv[])
 {
 	// go to the app's directory
@@ -76,7 +109,8 @@ int main(int argc, char* argv[])
 	SDL_Window*  window;
 	SDL_Surface* surface;
 	if (init(window, surface) || TTF_Init()) { ERROR_RETURN(1); }
-	SDL_SetEventFilter(filter, NULL);
+	int focused;
+	SDL_SetEventFilter(filter, &focused);
 	// load textures and map
 	if (loadtex(textures, floortex, ceiltex, ch)) { ERROR_RETURN(2); }
 	loadmap("maze", true);
@@ -85,15 +119,9 @@ int main(int argc, char* argv[])
 	char infostr[64]; SDL_Surface* text;
 	// set up gui things
 	std::vector<GUIThing> guithings;
-	{
-		GUIThing tmp;
-		tmp.s = button(font, "Save Map");
-		tmp.r = { 0, 0, tmp.s->w, tmp.s->h };
-		guithings.push_back(tmp);
-		tmp.s = button(font, "Load Map");
-		tmp.r = { tmp.r.w + 5, (tmp.r.h - tmp.s->h) / 2, tmp.s->w, tmp.s->h };
-		guithings.push_back(tmp);
-	}
+	addthing(guithings, inputbox(font, "Map name:", 100, GRAY(0xff)));
+	addthing(guithings, button(font, "Save Map"), ALIGN_LEFT);
+	addthing(guithings, button(font, "Load Map"), ALIGN_RIGHT, &guithings[0].r);
 	GUIThing guibdr = backdrop(guithings, font, "GUI Things");
 	// move gui things to center of screen
 	{
@@ -103,6 +131,8 @@ int main(int argc, char* argv[])
 		for (GUIThing& g : guithings) { g.r.x += offset.x; g.r.y += offset.y; }
 	}
 	bool showgui = false;
+	focused = -1;
+	int overflown = 0;
 	// set up variables for game
 	Vec2d<float> pos = { MAPW / 2.f, MAPH / 2.f, -1};
 	float heading = 0;
@@ -118,6 +148,7 @@ int main(int argc, char* argv[])
 	while (running)
 	{
 		// update player
+		if (focused < 0)
 		{
 			// positive or negative depending on what keys are pressed
 			float multiplier = (kb[SDL_SCANCODE_W] - kb[SDL_SCANCODE_S])
@@ -175,13 +206,38 @@ int main(int argc, char* argv[])
 		// process events
 		for (SDL_Event e; SDL_PollEvent(&e) && (running = e.type != SDL_QUIT);)
 		{
-			if (e.type == SDL_KEYDOWN)
+			switch (e.type)
 			{
+			case SDL_TEXTINPUT:
+				if (focused < 0 || overflown) break;
+				guithings[focused].value += e.text.text;
+				overflown = redrawinput(font, guithings[focused]);
+				break;
+			case SDL_KEYDOWN:
+			{
+				SDL_Keycode keycode = e.key.keysym.sym;
+				if (focused >= 0)
+				{
+					switch (keycode)
+					{
+					case SDLK_ESCAPE:
+					case SDLK_RETURN:
+						focused = -1;
+						SDL_StopTextInput();
+						goto exit_typeswitch;
+					case SDLK_BACKSPACE:
+						if (!guithings[focused].value.size()) break;
+						guithings[focused].value.pop_back();
+						overflown = redrawinput(font, guithings[focused]);
+						break;
+					}
+					break;
+				}
 				// texture information for the highlighted tile/face
 				Uint16 current = editmode ? tiles[hl.y][hl.x] : 0;
 				Uint16 facetex = current >> hl.mag * 4 & 0xf;
 				Uint16 oldtex  = facetex;
-				switch (e.key.keysym.sym)
+				switch (keycode)
 				{
 				case SDLK_e:    editmode = !editmode; break;
 				case SDLK_DOWN: facetex--; break;
@@ -196,19 +252,28 @@ int main(int argc, char* argv[])
 					tiles[hl.y][hl.x] = current & ~(0xf << hl.mag * 4)
 							    | facetex << hl.mag * 4;
 				}
+				break;
 			}
-			if (showgui && e.type == SDL_MOUSEBUTTONDOWN)
+			case SDL_MOUSEBUTTONDOWN:
 			{
+				if (!showgui) break;
 				SDL_Point p = { e.button.x, e.button.y };
-				for (GUIThing g : guithings)
+				bool f = focused >= 0;
+				focused = -1; SDL_StopTextInput();
+				int i = 0, limit = guithings.size();
+				for (; i < limit; i++)
 				{
-					if (SDL_PointInRect(&p, &g.r))
-					{
-						std::cout << "bruh" << std::endl;
-						break;
-					}
+					GUIThing g = guithings[i];
+					if (!SDL_PointInRect(&p, &g.r)) continue;
+					if (g.type == GUI_INPUT && focused < 0)
+					{ focused = i; SDL_StartTextInput(); }
+					break;
 				}
+				// close gui if click out and no focused input box
+				showgui = f || i != limit || SDL_PointInRect(&p, &guibdr.r);
 			}
+			}
+			exit_typeswitch: continue;
 		}
 		// tick the clock
 		tdiff = (SDL_GetTicks() - lasttick);

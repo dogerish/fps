@@ -4,6 +4,7 @@
 #include SDL2_H
 #include SDL2_TTF_H
 #include <vector>
+#include <string>
 
 // SDL_Color initialization lists for common colors
 #define BLACK(alpha)  { 0x00, 0x00, 0x00, alpha }
@@ -21,19 +22,42 @@
 	SDL_Color fg dfg
 #define DEFAULT_COLOR_ARGS COLOR_ARGS(= DGRAY(0xff),= LGRAY(0xff),= BLACK(0xff))
 
+enum GUIType {
+	GUI_BUTTON,
+	GUI_INPUT,
+	GUI_BACKDROP
+};
+
 struct GUIThing {
+	int type;
 	SDL_Rect r;
+	SDL_Rect textarea;
 	SDL_Surface* s;
+	std::string value;
+	SDL_Color border;
+	SDL_Color bg;
+	SDL_Color fg;
 };
 
 void borderfill(SDL_Surface* surface, SDL_Color border, SDL_Color bg);
 
-SDL_Surface* button(
+GUIThing button(
 	TTF_Font* font,
 	const char* label,
 	int marginx = 5, int marginy = 1,
 	DEFAULT_COLOR_ARGS
 );
+
+GUIThing inputbox(
+	TTF_Font* font,
+	const char* label,
+	int w,
+	SDL_Color outer,
+	DEFAULT_COLOR_ARGS
+);
+
+// returns 1 if the text overflowed
+int redrawinput(TTF_Font* font, GUIThing& box);
 
 // set title to NULL for no title
 GUIThing backdrop(
