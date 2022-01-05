@@ -34,6 +34,7 @@ struct GUIThing {
 	SDL_Rect textarea;
 	SDL_Surface* s;
 	std::string value;
+	int overflown;
 	SDL_Color border;
 	SDL_Color bg;
 	SDL_Color fg;
@@ -56,8 +57,7 @@ GUIThing inputbox(
 	DEFAULT_COLOR_ARGS
 );
 
-// returns 1 if the text overflowed
-int redrawinput(TTF_Font* font, GUIThing& box, bool editing = true);
+void redrawinput(TTF_Font* font, GUIThing* box, bool editing = true);
 
 // set title to NULL for no title
 GUIThing backdrop(
@@ -65,7 +65,7 @@ GUIThing backdrop(
 	TTF_Font* font,
 	const char* title,
 	int marginx = 5, int marginy = 5,
-	COLOR_ARGS(= BLACK(0xff),= GRAY(0xff),= BLACK(0xff))
+	COLOR_ARGS(= BLACK(0xff),= GRAY(0xff),= WHITE(0xff))
 );
 
 #endif

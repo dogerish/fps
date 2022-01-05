@@ -29,10 +29,9 @@ float fov = (M_PI / 2) / 2;
 
 static int SDLCALL filter(void* userdata, SDL_Event* e)
 {
-	int focused = *((int*) userdata);
 	return e->type == SDL_QUIT ||
 	       e->type == SDL_TEXTINPUT ||
-	       (e->type == SDL_KEYDOWN && (focused >= 0 || !e->key.repeat)) ||
+	       (e->type == SDL_KEYDOWN && (userdata || !e->key.repeat)) ||
 	       e->type == SDL_MOUSEBUTTONDOWN;
 }
 
@@ -76,8 +75,8 @@ enum ThingAlignment {
 	/************************************************/ ALIGN_BOTTOM = 2,
 	ALIGN_LEFT = 3, ALIGN_CENTER = 4, ALIGN_RIGHT = 5,
 };
-// returns the rect of the thing that was added
-SDL_Rect addthing(
+// returns a pointer to the GUIThing that was added
+GUIThing* addthing(
 	std::vector<GUIThing>& guithings,
 	GUIThing thing,
 	ThingAlignment align = ALIGN_CENTER,
@@ -85,7 +84,7 @@ SDL_Rect addthing(
 	int margin = 5
 )
 {
-	if (!ref && !guithings.size()) { guithings.push_back(thing); return thing.r; }
+	if (!ref && !guithings.size()) { guithings.push_back(thing); return &guithings.back(); }
 	if (!ref) ref = &guithings.back().r;
 	if (align < 3)
 	{
@@ -98,20 +97,20 @@ SDL_Rect addthing(
 		thing.r.x = ref->x + (align - 3) * (ref->w - thing.r.w) / 2;
 	}
 	guithings.push_back(thing);
-	return thing.r;
+	return &guithings.back();
 }
 
-int startinput(TTF_Font* font, int i, std::vector<GUIThing> guithings, int &overflown)
+GUIThing* startinput(TTF_Font* font, GUIThing* box)
 {
 	SDL_StartTextInput();
-	overflown = redrawinput(font, guithings[i]);
-	return i;
+	redrawinput(font, box);
+	return box;
 }
-int stopinput(TTF_Font* font, int i, std::vector<GUIThing> guithings, int &overflown)
+GUIThing* stopinput(TTF_Font* font, GUIThing* focused)
 {
 	SDL_StopTextInput();
-	overflown = redrawinput(font, guithings[i], false);
-	return -1;
+	redrawinput(font, focused, false);
+	return NULL;
 }
 
 int main(int argc, char* argv[])
@@ -122,20 +121,24 @@ int main(int argc, char* argv[])
 	SDL_Window*  window;
 	SDL_Surface* surface;
 	if (init(window, surface) || TTF_Init()) { ERROR_RETURN(1); }
-	int focused;
+	GUIThing* focused = NULL;
 	SDL_SetEventFilter(filter, &focused);
 	// load textures and map
 	if (loadtex(textures, floortex, ceiltex, ch)) { ERROR_RETURN(2); }
-	loadmap("maze", true);
+	std::string mapname = "maze";
+	loadmap(mapname, true);
 	TTF_Font* font = TTF_OpenFont("font.ttf", 14);
 	if (font == NULL) { logfile << TTF_GetError() << std::endl; logfile.close(); return 3; }
 	char infostr[64]; SDL_Surface* text;
 	// set up gui things
 	std::vector<GUIThing> guithings;
-	addthing(guithings, inputbox(font, "Map name:", 100, GRAY(0xff)));
-	addthing(guithings, button(font, "Save Map"), ALIGN_LEFT);
-	addthing(guithings, button(font, "Load Map"), ALIGN_RIGHT, &guithings[0].r);
-	GUIThing guibdr = backdrop(guithings, font, "GUI Things");
+	// reserve enough memory so that the pointers remain valid
+	guithings.reserve(3);
+	// add things
+	GUIThing *namebox = addthing(guithings, inputbox(font, "Map name:", 100, GRAY(0xff))),
+	         *savebut = addthing(guithings, button(font, "Save Map"), ALIGN_LEFT),
+	         *loadbut = addthing(guithings, button(font, "Load Map"), ALIGN_RIGHT, &namebox->r);
+	GUIThing guibdr = backdrop(guithings, font, mapname.c_str());
 	// move gui things to center of screen
 	{
 		SDL_Point offset = { (WIDTH - guibdr.r.w) / 2, (HEIGHT - guibdr.r.h) / 2 };
@@ -144,8 +147,6 @@ int main(int argc, char* argv[])
 		for (GUIThing& g : guithings) { g.r.x += offset.x; g.r.y += offset.y; }
 	}
 	bool showgui = false;
-	focused = -1;
-	int overflown = 0;
 	// set up variables for game
 	Vec2d<float> pos = { MAPW / 2.f, MAPH / 2.f, -1};
 	float heading = 0;
@@ -161,7 +162,7 @@ int main(int argc, char* argv[])
 	while (running)
 	{
 		// update player
-		if (focused < 0)
+		if (!focused)
 		{
 			// positive or negative depending on what keys are pressed
 			float multiplier = (kb[SDL_SCANCODE_W] - kb[SDL_SCANCODE_S])
@@ -222,29 +223,26 @@ int main(int argc, char* argv[])
 			switch (e.type)
 			{
 			case SDL_TEXTINPUT:
-				if (focused < 0 || overflown) break;
-				guithings[focused].value += e.text.text;
-				overflown = redrawinput(font, guithings[focused]);
+				if (!focused || focused->overflown) break;
+				focused->value += e.text.text;
+				redrawinput(font, focused);
 				break;
 			case SDL_KEYDOWN:
 			{
 				SDL_Keycode keycode = e.key.keysym.sym;
-				if (focused >= 0)
+				if (focused)
 				{
 					switch (keycode)
 					{
 					case SDLK_ESCAPE:
 					case SDLK_RETURN:
-						focused = stopinput(
-							font, focused, guithings,
-							overflown
-						);
+						focused = stopinput(font, focused);
 						goto exit_typeswitch;
 					case SDLK_BACKSPACE:
-						if (!guithings[focused].value.size()) break;
-						if (!overflown)
-							guithings[focused].value.pop_back();
-						overflown = redrawinput(font, guithings[focused]);
+						if (!focused->value.size()) break;
+						if (!focused->overflown)
+							focused->value.pop_back();
+						redrawinput(font, focused);
 						break;
 					}
 					break;
@@ -274,15 +272,25 @@ int main(int argc, char* argv[])
 			{
 				if (!showgui) break;
 				SDL_Point p = { e.button.x, e.button.y };
-				bool f = focused >= 0;
-				if (f) focused = stopinput(font, focused, guithings, overflown);
+				bool f = focused;
+				if (f) focused = stopinput(font, focused);
 				int i = 0, limit = guithings.size();
 				for (; i < limit; i++)
 				{
-					GUIThing g = guithings[i];
-					if (!SDL_PointInRect(&p, &g.r)) continue;
-					if (g.type == GUI_INPUT && focused < 0)
-						focused = startinput(font, i, guithings, overflown);
+					GUIThing* g = &guithings[i];
+					if (!SDL_PointInRect(&p, &g->r)) continue;
+					if (g->type == GUI_INPUT && !focused)
+						focused = startinput(font, g);
+					else
+					{
+						if (g == loadbut && !loadmap(namebox->value))
+							guibdr = backdrop(
+								guithings, font,
+								(mapname = namebox->value).c_str()
+							);
+						else if (g == savebut)
+							savemap(namebox->value);
+					}
 					break;
 				}
 				// close gui if click out and no focused input box

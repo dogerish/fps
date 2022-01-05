@@ -78,35 +78,34 @@ GUIThing inputbox(
 	return g;
 }
 
-int redrawinput(TTF_Font* font, GUIThing& box, bool editing)
+void redrawinput(TTF_Font* font, GUIThing* box, bool editing)
 {
 	int w, h;
-	TTF_SizeText(font, box.value.c_str(), &w, &h);
-	int overflown = w > box.textarea.w;
-	if (overflown && box.value.size()) box.value.pop_back();
+	TTF_SizeText(font, box->value.c_str(), &w, &h);
+	box->overflown = w > box->textarea.w;
+	if (box->overflown && box->value.size()) box->value.pop_back();
 	// turn red when overflowing and blue while editing
-	SDL_Color bg = box.bg;
-	bg.r -= (editing && !overflown) * 0x10;
+	SDL_Color bg = box->bg;
+	bg.r -= (editing && !box->overflown) * 0x10;
 	bg.g -= editing * 0x10;
-	bg.b -= overflown * 0x10;
+	bg.b -= box->overflown * 0x10;
 	// draw textbox background and text
-	SDL_FillRect(box.s, &box.textarea, SDL_MapRGBA(box.s->format, bg.r, bg.g, bg.b, bg.a));
-	SDL_Rect r = box.textarea;
-	if (box.value.size())
+	SDL_FillRect(box->s, &box->textarea, SDL_MapRGBA(box->s->format, bg.r, bg.g, bg.b, bg.a));
+	if (box->value.size())
 	{
-		SDL_Surface* t = TTF_RenderText_Shaded(font, box.value.c_str(), box.fg, bg);
-		SDL_BlitSurface(t, NULL, box.s, &r);
+		SDL_Rect r = box->textarea;
+		SDL_Surface* t = TTF_RenderText_Shaded(font, box->value.c_str(), box->fg, bg);
+		SDL_BlitSurface(t, NULL, box->s, &r);
 		SDL_FreeSurface(t);
 	}
 	// draw cursor
-	if (!editing || overflown) return overflown;
-	SDL_Rect cursor = { box.textarea.x + w + !w, box.textarea.y, 1, box.textarea.h };
+	if (!editing || box->overflown) return;
+	SDL_Rect cursor = { box->textarea.x + w + !w, box->textarea.y, 1, box->textarea.h };
 	SDL_FillRect(
-		box.s,
+		box->s,
 		&cursor,
-		SDL_MapRGBA(box.s->format, box.fg.r, box.fg.g, box.fg.b, box.fg.a)
+		SDL_MapRGBA(box->s->format, box->fg.r, box->fg.g, box->fg.b, box->fg.a)
 	);
-	return overflown;
 }
 
 // sets b to a if a comp b is true
