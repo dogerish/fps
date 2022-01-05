@@ -101,6 +101,19 @@ SDL_Rect addthing(
 	return thing.r;
 }
 
+int startinput(TTF_Font* font, int i, std::vector<GUIThing> guithings, int &overflown)
+{
+	SDL_StartTextInput();
+	overflown = redrawinput(font, guithings[i]);
+	return i;
+}
+int stopinput(TTF_Font* font, int i, std::vector<GUIThing> guithings, int &overflown)
+{
+	SDL_StopTextInput();
+	overflown = redrawinput(font, guithings[i], false);
+	return -1;
+}
+
 int main(int argc, char* argv[])
 {
 	// go to the app's directory
@@ -222,12 +235,15 @@ int main(int argc, char* argv[])
 					{
 					case SDLK_ESCAPE:
 					case SDLK_RETURN:
-						focused = -1;
-						SDL_StopTextInput();
+						focused = stopinput(
+							font, focused, guithings,
+							overflown
+						);
 						goto exit_typeswitch;
 					case SDLK_BACKSPACE:
 						if (!guithings[focused].value.size()) break;
-						guithings[focused].value.pop_back();
+						if (!overflown)
+							guithings[focused].value.pop_back();
 						overflown = redrawinput(font, guithings[focused]);
 						break;
 					}
@@ -259,14 +275,14 @@ int main(int argc, char* argv[])
 				if (!showgui) break;
 				SDL_Point p = { e.button.x, e.button.y };
 				bool f = focused >= 0;
-				focused = -1; SDL_StopTextInput();
+				if (f) focused = stopinput(font, focused, guithings, overflown);
 				int i = 0, limit = guithings.size();
 				for (; i < limit; i++)
 				{
 					GUIThing g = guithings[i];
 					if (!SDL_PointInRect(&p, &g.r)) continue;
 					if (g.type == GUI_INPUT && focused < 0)
-					{ focused = i; SDL_StartTextInput(); }
+						focused = startinput(font, i, guithings, overflown);
 					break;
 				}
 				// close gui if click out and no focused input box

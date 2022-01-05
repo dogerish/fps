@@ -57,7 +57,7 @@ GUIThing inputbox(
 );
 
 // returns 1 if the text overflowed
-int redrawinput(TTF_Font* font, GUIThing& box);
+int redrawinput(TTF_Font* font, GUIThing& box, bool editing = true);
 
 // set title to NULL for no title
 GUIThing backdrop(
