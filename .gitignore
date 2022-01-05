@@ -1,4 +1,5 @@
 *.swp
 Session.vim
 *.o
+.DS_Store
 logfile.txt
