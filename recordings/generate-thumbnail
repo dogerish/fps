@@ -1,0 +1,12 @@
+#! /bin/bash
+# generate thumbnail for screen recording
+if [[ -z "$1" ]]
+then
+	printf "Usage: %s <file>\n" "$(basename "$0")"
+	exit 1
+fi
+OUT=$(basename "$1" | sed 's/Screen Recording \(.*\)\..*$/\1/')
+printf '%s\n' "$OUT"
+d="$(dirname "$0")"
+OUT="$d/../thumbnails/$OUT"
+convert "$1[0]" "$d/play.png" -gravity center -composite "$OUT.png"
