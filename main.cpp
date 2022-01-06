@@ -240,8 +240,7 @@ int main(int argc, char* argv[])
 						goto exit_typeswitch;
 					case SDLK_BACKSPACE:
 						if (!focused->value.size()) break;
-						if (!focused->overflown)
-							focused->value.pop_back();
+						if (!focused->overflown) focused->value.pop_back();
 						redrawinput(font, focused);
 						break;
 					}

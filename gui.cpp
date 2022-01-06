@@ -136,18 +136,27 @@ GUIThing backdrop(
 	}
 	// make b.r w and h actual width and height values
 	b.r.w -= b.r.x; b.r.h -= b.r.y;
+	if (title)
+	{
+		t.r.w = t.s->w; t.r.h = t.s->h;
+		// include title if it wasn't already
+		if (guithings.size())
+		{
+			b.r.y -= t.s->h + marginy;
+			b.r.h += t.s->h + marginy;
+			if (t.r.w > b.r.w)
+			{
+				b.r.x -= (t.r.w - b.r.w) / 2;
+				b.r.w += t.r.w - b.r.w;
+			}
+		}
+		// put title in middle top
+		t.r.x = (b.r.w - t.r.w) / 2 + marginx;
+		t.r.y = marginy;
+	}
 	// apply margins
 	b.r.x -= marginx; b.r.w += marginx * 2;
 	b.r.y -= marginy; b.r.h += marginy * 2;
-	if (title)
-	{
-		// include title if it wasn't already
-		if (guithings.size()) { b.r.y -= t.s->h + marginy; b.r.h += t.s->h + marginy; }
-		t.r.w = t.s->w; t.r.h = t.s->h;
-		// middle top
-		t.r.x = (b.r.w - t.r.w) / 2;
-		t.r.y = marginy;
-	}
 	// render this
 	b.s = SDL_CreateRGBSurface(0, b.r.w, b.r.h, 32, 0, 0, 0, 0xff);
 	borderfill(b.s, border, bg);
