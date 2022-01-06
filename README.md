@@ -65,5 +65,8 @@ Raycaster made by me, algorithms inspired by online sources.
 18. [![video](thumbnails/toaster.png)](https://streamable.com/ffg9u2)<br/>
    2021-12-31 at 14.38.47: Game running on Windows! *Video by J-Toastie*
 
-18. [![video](thumbnails/2022-01-03%20at%2016.42.25.png)](https://streamable.com/55nhaf)<br/>
+19. [![video](thumbnails/2022-01-03%20at%2016.42.25.png)](https://streamable.com/55nhaf)<br/>
    2022-01-03 at 16.42.25: Added some GUI stuff and input boxes
+
+20. [![video](thumbnails/2022-01-05%20at%2021.20.41.png)](https://streamable.com/epsh6q)<br/>
+   2022-01-05 at 21.20.41: Fleshed out GUI system
