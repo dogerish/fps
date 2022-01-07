@@ -69,37 +69,6 @@ int savemap(std::string name)
 	return e;
 }
 
-enum ThingAlignment {
-	/************************************************/ ALIGN_TOP = 0,
-	/************* Reference Rectangle **************/ ALIGN_MIDDLE = 1,
-	/************************************************/ ALIGN_BOTTOM = 2,
-	ALIGN_LEFT = 3, ALIGN_CENTER = 4, ALIGN_RIGHT = 5,
-};
-// returns a pointer to the GUIThing that was added
-GUIThing* addthing(
-	std::vector<GUIThing>& guithings,
-	GUIThing thing,
-	ThingAlignment align = ALIGN_CENTER,
-	SDL_Rect *ref = NULL,
-	int margin = 5
-)
-{
-	if (!ref && !guithings.size()) { guithings.push_back(thing); return &guithings.back(); }
-	if (!ref) ref = &guithings.back().r;
-	if (align < 3)
-	{
-		thing.r.x = ref->x + ref->w + margin;
-		thing.r.y = ref->y + align * (ref->h - thing.r.h) / 2;
-	}
-	else
-	{
-		thing.r.y = ref->y + ref->h + margin;
-		thing.r.x = ref->x + (align - 3) * (ref->w - thing.r.w) / 2;
-	}
-	guithings.push_back(thing);
-	return &guithings.back();
-}
-
 GUIThing* startinput(TTF_Font* font, GUIThing* box)
 {
 	SDL_StartTextInput();
@@ -111,6 +80,25 @@ GUIThing* stopinput(TTF_Font* font, GUIThing* focused)
 	SDL_StopTextInput();
 	redrawinput(font, focused, false);
 	return NULL;
+}
+
+// show available maps, returns new backdrop
+GUIThing mapcolumns(
+	std::vector<GUIThing> &guithings, TTF_Font* font, std::string &mapname,
+	GUIThing* &namebox, GUIThing* &savebut, GUIThing* &loadbut
+)
+{
+	std::vector<std::string> entries;
+	for (auto entry : fs::directory_iterator("maps/"))
+		entries.push_back(entry.path().filename().string());
+	columnate(
+		guithings, font, "Maps", entries,
+		{ namebox->r.x, loadbut->r.y, namebox->r.w, loadbut->r.h }, 5, 5,
+		GRAY(0xff), DGRAY(0xff), GRAY(0xff)
+	);
+	// update pointers
+	loadbut = (savebut = (namebox = &guithings[0]) + 1) + 1;
+	return backdrop(guithings, font, mapname.c_str());
 }
 
 int main(int argc, char* argv[])
@@ -135,20 +123,22 @@ int main(int argc, char* argv[])
 	// reserve enough memory so that the pointers remain valid
 	guithings.reserve(3);
 	// add things
-	GUIThing *namebox = addthing(guithings, inputbox(font, "Map name:", 100, GRAY(0xff))),
-	         *savebut = addthing(guithings, button(font, "Save Map"), ALIGN_LEFT),
-	         *loadbut = addthing(guithings, button(font, "Load Map"), ALIGN_RIGHT, &namebox->r);
-	GUIThing guibdr = backdrop(guithings, font, mapname.c_str());
+	GUIThing *namebox = addthing(guithings, inputbox(font, "Map name:", 100)),
+	         *savebut = addthing(guithings, button(font, "Save Map"), ALIGN_RIGHT),
+	         *loadbut = addthing(guithings, button(font, "Load Map"), ALIGN_LEFT, &namebox->r),
+	         guibdr   = mapcolumns(guithings, font, mapname, namebox, savebut, loadbut);
 	// move gui things to center of screen
 	{
-		SDL_Point offset = { (WIDTH - guibdr.r.w) / 2, (HEIGHT - guibdr.r.h) / 2 };
-		offset.x -= guibdr.r.x; offset.y -= guibdr.r.y;
+		SDL_Point offset = {
+			(WIDTH  - guibdr.r.w) / 2 - guibdr.r.x,
+			(HEIGHT - guibdr.r.h) / 2 - guibdr.r.y
+		};
 		guibdr.r.x += offset.x; guibdr.r.y += offset.y;
 		for (GUIThing& g : guithings) { g.r.x += offset.x; g.r.y += offset.y; }
 	}
 	bool showgui = false;
 	// set up variables for game
-	Vec2d<float> pos = { MAPW / 2.f, MAPH / 2.f, -1};
+	Vec2d<float> pos = { MAPW / 2.f, MAPH / 2.f, -1 };
 	float heading = 0;
 	// normalized coordinates from leftmost fov to rightmost
 	Vec2d<float> fieldleft, fieldcenter = { 1, 0, 1 }, fieldright;
@@ -280,7 +270,7 @@ int main(int argc, char* argv[])
 					if (!SDL_PointInRect(&p, &g->r)) continue;
 					if (g->type == GUI_INPUT && !focused)
 						focused = startinput(font, g);
-					else
+					else if (g->type == GUI_BUTTON)
 					{
 						if (g == loadbut && !loadmap(namebox->value))
 							guibdr = backdrop(
@@ -289,7 +279,13 @@ int main(int argc, char* argv[])
 							);
 						else if (g == savebut)
 							savemap(namebox->value);
+						else if (g != loadbut)
+						{
+							namebox->value = g->value;
+							redrawinput(font, namebox, false);
+						}
 					}
+					else continue;
 					break;
 				}
 				// close gui if click out and no focused input box

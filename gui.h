@@ -14,7 +14,7 @@
 #define WHITE(alpha)  { 0xff, 0xff, 0xff, alpha }
 #define RED(alpha)    { 0xff, 0x00, 0x00, alpha }
 #define GREEN(alpha)  { 0x00, 0xff, 0x00, alpha }
-#define BLUE(alpha)   { 0x00, 0xff, 0x00, alpha }
+#define BLUE(alpha)   { 0x00, 0x00, 0xff, alpha }
 
 #define COLOR_ARGS(dborder, dbg, dfg) \
 	SDL_Color border dborder,\
@@ -23,6 +23,7 @@
 #define DEFAULT_COLOR_ARGS COLOR_ARGS(= DGRAY(0xff),= LGRAY(0xff),= BLACK(0xff))
 
 enum GUIType {
+	GUI_TEXT,
 	GUI_BUTTON,
 	GUI_INPUT,
 	GUI_BACKDROP
@@ -42,6 +43,13 @@ struct GUIThing {
 
 void borderfill(SDL_Surface* surface, SDL_Color border, SDL_Color bg);
 
+GUIThing textbox(
+	TTF_Font* font,
+	const char* text,
+	SDL_Color bg = GRAY(0xff),
+	SDL_Color fg = WHITE(0xff)
+);
+
 GUIThing button(
 	TTF_Font* font,
 	const char* label,
@@ -53,7 +61,7 @@ GUIThing inputbox(
 	TTF_Font* font,
 	const char* label,
 	int w,
-	SDL_Color outer,
+	SDL_Color outer = GRAY(0xff),
 	DEFAULT_COLOR_ARGS
 );
 
@@ -68,4 +76,31 @@ GUIThing backdrop(
 	COLOR_ARGS(= BLACK(0xff),= GRAY(0xff),= WHITE(0xff))
 );
 
+enum ThingAlignment {
+	/************************************************/ ALIGN_TOP = 0,
+	/************* Reference Rectangle **************/ ALIGN_MIDDLE = 1,
+	/************************************************/ ALIGN_BOTTOM = 2,
+	ALIGN_LEFT = 3, ALIGN_CENTER = 4, ALIGN_RIGHT = 5,
+};
+// returns a pointer to the GUIThing that was added
+GUIThing* addthing(
+	std::vector<GUIThing> &guithings,
+	GUIThing thing,
+	ThingAlignment align = ALIGN_CENTER,
+	SDL_Rect* ref = NULL,
+	int margin = 5
+);
+
+// make column layout for list of strings which will be made into buttons which are appended
+// NULL title for none
+void columnate(
+	std::vector<GUIThing> &guithings,
+	TTF_Font* font,
+	const char* title,
+	std::vector<std::string> &strings,
+	SDL_Rect alignto,
+	int marginx = 5, int marginy = 5,
+	SDL_Color outer = GRAY(0xff),
+	DEFAULT_COLOR_ARGS
+);
 #endif

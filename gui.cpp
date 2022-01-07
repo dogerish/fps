@@ -18,6 +18,19 @@ void borderfill(SDL_Surface* surface, SDL_Color border, SDL_Color bg)
 
 #define SET_COLORS(thing) thing.border = border; thing.bg = bg; thing.fg = fg
 
+GUIThing textbox(
+	TTF_Font* font,
+	const char* text,
+	SDL_Color bg,
+	SDL_Color fg
+)
+{
+	GUIThing g; g.bg = bg; g.fg = fg; g.type = GUI_TEXT;
+	g.s = TTF_RenderText_Shaded(font, text, fg, bg);
+	g.r = { 0, 0, g.s->w, g.s->h };
+	return g;
+}
+
 GUIThing button(
 	TTF_Font* font,
 	const char* label,
@@ -26,6 +39,7 @@ GUIThing button(
 )
 {
 	GUIThing g; g.type = GUI_BUTTON; SET_COLORS(g);
+	g.value = label;
 	SDL_Surface* text = TTF_RenderText_Shaded(font, label, fg, bg);
 	SDL_Rect r = { marginx, marginy, text->w, text->h };
 	g.s = SDL_CreateRGBSurface(
@@ -166,4 +180,72 @@ GUIThing backdrop(
 		SDL_FreeSurface(t.s);
 	}
 	return b;
+}
+
+GUIThing* addthing(
+	std::vector<GUIThing> &guithings,
+	GUIThing thing,
+	ThingAlignment align,
+	SDL_Rect* ref,
+	int margin
+)
+{
+	if (!ref && !guithings.size()) { guithings.push_back(thing); return &guithings.back(); }
+	if (!ref) ref = &guithings.back().r;
+	if (align < 3)
+	{
+		thing.r.x = ref->x + ref->w + margin;
+		thing.r.y = ref->y + align * (ref->h - thing.r.h) / 2;
+	}
+	else
+	{
+		thing.r.y = ref->y + ref->h + margin;
+		thing.r.x = ref->x + (align - 3) * (ref->w - thing.r.w) / 2;
+	}
+	guithings.push_back(thing);
+	return &guithings.back();
+}
+
+void columnate(
+	std::vector<GUIThing> &guithings,
+	TTF_Font* font,
+	const char* title,
+	std::vector<std::string> &strings,
+	SDL_Rect r,
+	int marginx, int marginy,
+	SDL_Color outer,
+	COLOR_ARGS(,,)
+)
+{
+	if (title) r = addthing(guithings, textbox(font, "Maps"), ALIGN_CENTER, &r)->r;
+	if (!strings.size()) return;
+	// generate columns
+	int numcols = (strings.size() < 3) ? strings.size() : 3;
+	std::vector<GUIThing> columns[numcols];
+	for (int i = 0; i < strings.size(); i++)
+		addthing(
+			columns[i * numcols / strings.size()],
+			button(font, strings[i].c_str(), 5, 1, border, bg, fg)
+		);
+	// generate backdrops and align them and their contents like ALIGN_TOP
+	GUIThing bdrs[numcols];
+	for (int i = 0; i < numcols; i++)
+	{
+		bdrs[i] = backdrop(columns[i], font, NULL, marginx, marginy, outer);
+		SDL_Point offset = {
+			i ? bdrs[i - 1].r.x + bdrs[i - 1].r.w + 5 - bdrs[i].r.x : 0,
+			r.y + r.h - bdrs[i].r.y
+		};
+		bdrs[i].r.x += offset.x; bdrs[i].r.y += offset.y;
+		for (GUIThing &g : columns[i]) { g.r.x += offset.x; g.r.y += offset.y; }
+	}
+	// center everything and add everything
+	int fullwidth = bdrs[numcols - 1].r.x + bdrs[numcols - 1].r.w - bdrs[0].r.x;
+	int offset = r.x + (r.w - fullwidth) / 2 - bdrs[0].r.x;
+	for (int i = 0; i < numcols; i++)
+	{
+		bdrs[i].r.x += offset;
+		guithings.push_back(bdrs[i]);
+		for (GUIThing &g : columns[i]) { g.r.x += offset; guithings.push_back(g); }
+	}
 }
