@@ -246,30 +246,15 @@ int main(int argc, char* argv[])
 		{
 			switch (e.type)
 			{
-			case SDL_TEXTINPUT:
-				if (!mgui.focused || mgui.focused->overflown) break;
-				mgui.focused->value += e.text.text;
-				redrawinput(font, mgui.focused);
-				break;
+			case SDL_TEXTINPUT: oninput(font, &mgui, e.text.text); break;
 			case SDL_KEYDOWN:
 			{
 				SDL_Keycode keycode = e.key.keysym.sym;
-				if (mgui.focused)
+				// gui input
+				if (showgui)
 				{
-					switch (keycode)
-					{
-					case SDLK_ESCAPE:
-					case SDLK_RETURN:
-						mgui.focused = stopinput(font, mgui.focused);
-						goto exit_typeswitch;
-					case SDLK_BACKSPACE:
-						if (!mgui.focused->value.size()) break;
-						if (!mgui.focused->overflown)
-							mgui.focused->value.pop_back();
-						redrawinput(font, mgui.focused);
-						break;
-					}
-					break;
+					int response = onkeypress(font, &mgui, keycode);
+					if (response <= 0) { showgui -= response < 0; break; }
 				}
 				// texture information for the highlighted tile/face
 				Uint16 current = editmode ? tiles[hl.y][hl.x] : 0;
@@ -277,10 +262,10 @@ int main(int argc, char* argv[])
 				Uint16 oldtex  = facetex;
 				switch (keycode)
 				{
-				case SDLK_e:    editmode = !editmode; break;
-				case SDLK_DOWN: facetex--; break;
-				case SDLK_UP:   facetex++; break;
-				case SDLK_ESCAPE: showgui ? showgui-- : showgui++; break;
+				case SDLK_e:      editmode = !editmode; break;
+				case SDLK_DOWN:   facetex--; break;
+				case SDLK_UP:     facetex++; break;
+				case SDLK_ESCAPE: showgui = 1; break;
 				}
 				// update the texture if needed
 				if (editmode && facetex != oldtex)
@@ -297,7 +282,6 @@ int main(int argc, char* argv[])
 				showgui -= onclick(font, &mgui, { e.button.x, e.button.y }) < 0;
 				break;
 			}
-			exit_typeswitch: continue;
 		}
 		// tick the clock
 		tdiff = (SDL_GetTicks() - lasttick);
