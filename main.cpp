@@ -10,6 +10,7 @@
 #include "rays.h"
 #include "render.h"
 #include "gui.h"
+#include "guipage.h"
 namespace fs = std::filesystem;
 
 #define QUITGAME quit(textures, floortex, ceiltex, ch, window, surface)
@@ -69,23 +70,16 @@ int savemap(std::string name)
 	return e;
 }
 
-GUIThing* startinput(TTF_Font* font, GUIThing* box)
-{
-	SDL_StartTextInput();
-	redrawinput(font, box);
-	return box;
-}
-GUIThing* stopinput(TTF_Font* font, GUIThing* focused)
-{
-	SDL_StopTextInput();
-	redrawinput(font, focused, false);
-	return NULL;
-}
+struct maingui_data {
+	GUIThing* namebox;
+	GUIThing* savebut;
+	GUIThing* loadbut;
+	std::string* mapname;
+};
 
 // show available maps, returns new backdrop
 GUIThing mapcolumns(
-	std::vector<GUIThing> &guithings, TTF_Font* font, std::string &mapname,
-	GUIThing* &namebox, GUIThing* &savebut, GUIThing* &loadbut
+	std::vector<GUIThing> &guithings, TTF_Font* font, maingui_data &ptrs
 )
 {
 	std::vector<std::string> entries;
@@ -93,12 +87,48 @@ GUIThing mapcolumns(
 		entries.push_back(entry.path().filename().string());
 	columnate(
 		guithings, font, "Maps", entries,
-		{ namebox->r.x, loadbut->r.y, namebox->r.w, loadbut->r.h }, 5, 5,
+		{ ptrs.namebox->r.x, ptrs.loadbut->r.y, ptrs.namebox->r.w, ptrs.loadbut->r.h },
+		5, 5,
 		GRAY(0xff), DGRAY(0xff), GRAY(0xff)
 	);
 	// update pointers
-	loadbut = (savebut = (namebox = &guithings[0]) + 1) + 1;
-	return backdrop(guithings, font, mapname.c_str());
+	ptrs.loadbut = (ptrs.savebut = (ptrs.namebox = &guithings[0]) + 1) + 1;
+	return backdrop(guithings, font, ptrs.mapname->c_str());
+}
+
+void mgui_click(TTF_Font* font, GUIPage* page, GUIThing* thing)
+{
+	maingui_data* data = (maingui_data*) page->userdata;
+	// save map
+	if (thing == data->savebut && !savemap(data->namebox->value))
+	{
+		// delete everything after maps title
+		for (int i = page->things.size() - 1; page->things[i].type != GUI_TEXT; i--)
+		{
+			SDL_FreeSurface(page->things[i].s);
+			page->things.pop_back();
+		}
+		SDL_FreeSurface(page->things.back().s);
+		page->things.pop_back();
+		SDL_FreeSurface(page->bdr.s);
+		page->bdr = mapcolumns(page->things, font, *data);
+	}
+	// load map
+	else if (thing == data->loadbut && !loadmap(data->namebox->value))
+	{
+		SDL_FreeSurface(page->bdr.s);
+		page->bdr = backdrop(
+			page->things,
+			font, (*data->mapname = data->namebox->value).c_str(),
+			5, 5, page->bdr.border, page->bdr.bg, page->bdr.fg
+		);
+	}
+	// select map
+	else if (thing != data->loadbut && thing != data->savebut)
+	{
+		data->namebox->value = thing->value;
+		redrawinput(font, data->namebox, false);
+	}
 }
 
 int main(int argc, char* argv[])
@@ -109,8 +139,8 @@ int main(int argc, char* argv[])
 	SDL_Window*  window;
 	SDL_Surface* surface;
 	if (init(window, surface) || TTF_Init()) { ERROR_RETURN(1); }
-	GUIThing* focused = NULL;
-	SDL_SetEventFilter(filter, &focused);
+	GUIPage mgui;
+	SDL_SetEventFilter(filter, &mgui.focused);
 	// load textures and map
 	if (loadtex(textures, floortex, ceiltex, ch)) { ERROR_RETURN(2); }
 	std::string mapname = "maze";
@@ -119,24 +149,28 @@ int main(int argc, char* argv[])
 	if (font == NULL) { logfile << TTF_GetError() << std::endl; logfile.close(); return 3; }
 	char infostr[64]; SDL_Surface* text;
 	// set up gui things
-	std::vector<GUIThing> guithings;
+	mgui.id = 0;
+	maingui_data ptrs;
+	mgui.userdata = &ptrs;
+	mgui.button_click = mgui_click;
 	// reserve enough memory so that the pointers remain valid
-	guithings.reserve(3);
-	// add things
-	GUIThing *namebox = addthing(guithings, inputbox(font, "Map name:", 100)),
-	         *savebut = addthing(guithings, button(font, "Save Map"), ALIGN_RIGHT),
-	         *loadbut = addthing(guithings, button(font, "Load Map"), ALIGN_LEFT, &namebox->r),
-	         guibdr   = mapcolumns(guithings, font, mapname, namebox, savebut, loadbut);
+	mgui.things.reserve(3);
+	// add things and ste up pointers
+	ptrs.namebox = addthing(mgui.things, inputbox(font, "Map name:", 100));
+	ptrs.savebut = addthing(mgui.things, button(font, "Save"), ALIGN_RIGHT);
+	ptrs.loadbut = addthing(mgui.things, button(font, "Load"), ALIGN_LEFT, &ptrs.namebox->r);
+	ptrs.mapname = &mapname;
+	mgui.bdr     = mapcolumns(mgui.things, font, ptrs);
 	// move gui things to center of screen
 	{
 		SDL_Point offset = {
-			(WIDTH  - guibdr.r.w) / 2 - guibdr.r.x,
-			(HEIGHT - guibdr.r.h) / 2 - guibdr.r.y
+			(WIDTH  - mgui.bdr.r.w) / 2 - mgui.bdr.r.x,
+			(HEIGHT - mgui.bdr.r.h) / 2 - mgui.bdr.r.y
 		};
-		guibdr.r.x += offset.x; guibdr.r.y += offset.y;
-		for (GUIThing& g : guithings) { g.r.x += offset.x; g.r.y += offset.y; }
+		mgui.bdr.r.x += offset.x; mgui.bdr.r.y += offset.y;
+		for (GUIThing& g : mgui.things) { g.r.x += offset.x; g.r.y += offset.y; }
 	}
-	bool showgui = false;
+	int showgui = 0;
 	// set up variables for game
 	Vec2d<float> pos = { MAPW / 2.f, MAPH / 2.f, -1 };
 	float heading = 0;
@@ -152,7 +186,7 @@ int main(int argc, char* argv[])
 	while (running)
 	{
 		// update player
-		if (!focused)
+		if (!mgui.focused)
 		{
 			// positive or negative depending on what keys are pressed
 			float multiplier = (kb[SDL_SCANCODE_W] - kb[SDL_SCANCODE_S])
@@ -202,8 +236,8 @@ int main(int argc, char* argv[])
 		// gui
 		if (showgui)
 		{
-			SDL_BlitSurface(guibdr.s, NULL, surface, &guibdr.r);
-			for (GUIThing g : guithings) SDL_BlitSurface(g.s, NULL, surface, &g.r);
+			SDL_BlitSurface(mgui.bdr.s, NULL, surface, &mgui.bdr.r);
+			for (GUIThing g : mgui.things) SDL_BlitSurface(g.s, NULL, surface, &g.r);
 		}
 		SDL_UpdateWindowSurface(window);
 
@@ -213,25 +247,26 @@ int main(int argc, char* argv[])
 			switch (e.type)
 			{
 			case SDL_TEXTINPUT:
-				if (!focused || focused->overflown) break;
-				focused->value += e.text.text;
-				redrawinput(font, focused);
+				if (!mgui.focused || mgui.focused->overflown) break;
+				mgui.focused->value += e.text.text;
+				redrawinput(font, mgui.focused);
 				break;
 			case SDL_KEYDOWN:
 			{
 				SDL_Keycode keycode = e.key.keysym.sym;
-				if (focused)
+				if (mgui.focused)
 				{
 					switch (keycode)
 					{
 					case SDLK_ESCAPE:
 					case SDLK_RETURN:
-						focused = stopinput(font, focused);
+						mgui.focused = stopinput(font, mgui.focused);
 						goto exit_typeswitch;
 					case SDLK_BACKSPACE:
-						if (!focused->value.size()) break;
-						if (!focused->overflown) focused->value.pop_back();
-						redrawinput(font, focused);
+						if (!mgui.focused->value.size()) break;
+						if (!mgui.focused->overflown)
+							mgui.focused->value.pop_back();
+						redrawinput(font, mgui.focused);
 						break;
 					}
 					break;
@@ -245,7 +280,7 @@ int main(int argc, char* argv[])
 				case SDLK_e:    editmode = !editmode; break;
 				case SDLK_DOWN: facetex--; break;
 				case SDLK_UP:   facetex++; break;
-				case SDLK_ESCAPE: showgui = !showgui; break;
+				case SDLK_ESCAPE: showgui ? showgui-- : showgui++; break;
 				}
 				// update the texture if needed
 				if (editmode && facetex != oldtex)
@@ -258,39 +293,9 @@ int main(int argc, char* argv[])
 				break;
 			}
 			case SDL_MOUSEBUTTONDOWN:
-			{
 				if (!showgui) break;
-				SDL_Point p = { e.button.x, e.button.y };
-				bool f = focused;
-				if (f) focused = stopinput(font, focused);
-				int i = 0, limit = guithings.size();
-				for (; i < limit; i++)
-				{
-					GUIThing* g = &guithings[i];
-					if (!SDL_PointInRect(&p, &g->r)) continue;
-					if (g->type == GUI_INPUT && !focused)
-						focused = startinput(font, g);
-					else if (g->type == GUI_BUTTON)
-					{
-						if (g == loadbut && !loadmap(namebox->value))
-							guibdr = backdrop(
-								guithings, font,
-								(mapname = namebox->value).c_str()
-							);
-						else if (g == savebut)
-							savemap(namebox->value);
-						else if (g != loadbut)
-						{
-							namebox->value = g->value;
-							redrawinput(font, namebox, false);
-						}
-					}
-					else continue;
-					break;
-				}
-				// close gui if click out and no focused input box
-				showgui = f || i != limit || SDL_PointInRect(&p, &guibdr.r);
-			}
+				showgui -= onclick(font, &mgui, { e.button.x, e.button.y }) < 0;
+				break;
 			}
 			exit_typeswitch: continue;
 		}
@@ -299,8 +304,8 @@ int main(int argc, char* argv[])
 		lasttick = SDL_GetTicks();
 	}
 	TTF_CloseFont(font);
-	for (GUIThing g : guithings) SDL_FreeSurface(g.s);
-	SDL_FreeSurface(guibdr.s);
+	for (GUIThing g : mgui.things) SDL_FreeSurface(g.s);
+	SDL_FreeSurface(mgui.bdr.s);
 	QUITGAME;
 	logfile.close();
 	return 0;

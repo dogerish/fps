@@ -1,4 +1,5 @@
 #include "gui.h"
+#include "utils.h"
 #include SDL2_H
 #include SDL2_TTF_H
 #include <vector>
