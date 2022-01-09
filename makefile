@@ -11,7 +11,7 @@ endif
 CXXFLAGS := $(shell ${SDL2_CFG} --cflags) --std=c++20 --debug
 LIBS := $(shell ${SDL2_CFG} --libs) -lSDL2_ttf
 
-OBJ := main.o utils.o rays.o render.o gui.o guipage.o
+OBJ := main.o utils.o rays.o render.o gui.o guipage.o maingui.o map.o
 OBJ := $(addprefix $(TDIR)/,$(OBJ))
 
 TARGET=game$(EXT)
@@ -29,6 +29,7 @@ $(TDIR)/guipage.o: gui.h
 
 $(filter-out $(TDIR)/utils.o,$(OBJ)): utils.h
 $(addprefix $(TDIR)/,main.o render.o): rays.h
+$(addprefix $(TDIR)/,rays.o maingui.o render.o): map.h
 
 .PHONY: redo clean
 redo: clean $(TARGET)

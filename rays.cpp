@@ -1,11 +1,12 @@
 #include "rays.h"
 #include "utils.h"
 #include SDL2_H
+#include "map.h"
 
 // side is stored in tile.mag
 Vec2d<float> raycast(
 	Vec2d<float> pos, Vec2d<float> vel,
-	const Uint16 tiles[][MAPW],
+	Map* map,
 	Vec2d<int>& tile
 )
 {
@@ -47,10 +48,10 @@ Vec2d<float> raycast(
 		};
 		if (
 			// check if tile is out of map
-			   (MAPW <= tile.x) || 0 > tile.x
-			|| (MAPH <= tile.y) || 0 > tile.y
+			   (map->w <= tile.x) || 0 > tile.x
+			|| (map->h <= tile.y) || 0 > tile.y
 			// check if tile is filled
-			|| tiles[tile.y][tile.x]
+			|| wall_at(map, tile.x, tile.y)->clip
 		)
 		{
 			tile.mag = axis + (axis ? vel.y < 0 : vel.x < 0) * 2;

@@ -3,11 +3,11 @@
 #include "utils.h"
 #include SDL2_H
 #include "rays.h"
+#include "map.h"
 
+#define MAXDIST 20.f
 // value to use for color mod to give fog
 #define FOGMOD(dist) (0xff - 0xef * dist / MAXDIST)
-
-const float MAXDIST = hypot(MAPW, MAPH) * 0.9;
 
 #define POINTERUP(surface) p = (Uint8*) (surface->pixels) + 3 * (src.y * TEXSIZE + src.x)
 #define DRAWPOINT(y) winpixels[y * WIDTH + x] =\
@@ -56,7 +56,7 @@ void renderwalls(
 	SDL_Surface* surface,
 	Vec2d<float> pos, float heading,
 	bool editmode,
-	Uint16 tiles[][MAPW],
+	Map* map,
 	Vec2d<float> vel /*fieldleft*/, Vec2d<float> fieldright,
 	Vec2d<int> hl,
 	SDL_Surface* textures[]
@@ -73,7 +73,7 @@ void renderwalls(
 	{
 		vel.x += step.x; vel.y += step.y;
 		Vec2d<int> tile;
-		Vec2d<float> d = raycast(pos, vel, tiles, tile);
+		Vec2d<float> d = raycast(pos, vel, map, tile);
 		// use cosine to get distance perpendicular to viewing plane
 		d.mag *= cos(heading - atan2(vel.y, vel.x));
 		// height to make the column
@@ -91,7 +91,7 @@ void renderwalls(
 		}
 		else { src.y = 0; src.h = TEXSIZE; }
 		// pick the texture, implement fog, and highlight it if needed
-		SDL_Surface* t = textures[(tiles[tile.y][tile.x] >> tile.mag * 4 & 0xf) - 1];
+		SDL_Surface* t = textures[face_at(wall_at(map, tile.x, tile.y), tile.mag) - 1];
 		Uint8 v = FOGMOD(d.mag);
 		SDL_SetSurfaceColorMod(t, v, v * !(editmode && tile == hl), v);
 		// sample at the right x location of the texture

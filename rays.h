@@ -4,6 +4,7 @@
 #include <string>
 #include <sstream>
 #include "utils.h"
+#include "map.h"
 #include SDL2_H
 
 template<typename T> struct Vec2d
@@ -26,7 +27,7 @@ template<typename T> struct Vec2d
 // side is stored in tile.mag
 Vec2d<float> raycast(
 	Vec2d<float> pos, Vec2d<float> vel,
-	const Uint16 tiles[][MAPW],
+	Map* map,
 	Vec2d<int>& tile
 );
 #endif

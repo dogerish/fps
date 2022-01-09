@@ -11,6 +11,8 @@
 #include "render.h"
 #include "gui.h"
 #include "guipage.h"
+#include "maingui.h"
+#include "map.h"
 namespace fs = std::filesystem;
 
 #define QUITGAME quit(textures, floortex, ceiltex, ch, window, surface)
@@ -19,8 +21,6 @@ namespace fs = std::filesystem;
 	logfile.close(); \
 	return code;
 
-#define MAPVER 1
-Uint16 tiles[MAPW][MAPH];
 SDL_Surface* textures[15];
 SDL_Surface* floortex;
 SDL_Surface* ceiltex;
@@ -36,101 +36,6 @@ static int SDLCALL filter(void* userdata, SDL_Event* e)
 	       e->type == SDL_MOUSEBUTTONDOWN;
 }
 
-int loadmap(std::string name, bool reset_on_fail = false)
-{
-	int e = 0, v;
-	name = "maps/" + name;
-	std::ifstream file(name, std::ios::binary);
-	file >> v;
-	if (v != MAPVER && ++e)
-		logfile << "Invalid map version. Expected " << MAPVER << ", but got " << v;
-	else
-		file.ignore().read((char*) tiles, MAPH * MAPW * 2);
-	if (!file.good() && ++e)
-	{
-		logfile << "Error while loading '" << name << "'" << std::endl;
-		// set to default map
-		if (reset_on_fail)
-			for (int y = 0; y < MAPH; y++) for (int x = 0; x < MAPW; x++)
-				tiles[y][x] = !(x % (MAPW - 1) && y % (MAPH - 1)) * 0x1111;
-	}
-	file.close();
-	return e;
-}
-
-int savemap(std::string name)
-{
-	int e = 0;
-	name = "maps/" + name;
-	std::ofstream file(name, std::ios::binary);
-	file << MAPVER << std::endl;
-	file.write((char*) tiles, MAPH * MAPW * 2);
-	if (!file.good() && ++e) logfile << "Error while saving '" << name << "'" << std::endl;
-	file.close();
-	return e;
-}
-
-struct maingui_data {
-	GUIThing* namebox;
-	GUIThing* savebut;
-	GUIThing* loadbut;
-	std::string* mapname;
-};
-
-// show available maps, returns new backdrop
-GUIThing mapcolumns(
-	std::vector<GUIThing> &guithings, TTF_Font* font, maingui_data &ptrs
-)
-{
-	std::vector<std::string> entries;
-	for (auto entry : fs::directory_iterator("maps/"))
-		entries.push_back(entry.path().filename().string());
-	columnate(
-		guithings, font, "Maps", entries,
-		{ ptrs.namebox->r.x, ptrs.loadbut->r.y, ptrs.namebox->r.w, ptrs.loadbut->r.h },
-		5, 5,
-		GRAY(0xff), DGRAY(0xff), GRAY(0xff)
-	);
-	// update pointers
-	ptrs.loadbut = (ptrs.savebut = (ptrs.namebox = &guithings[0]) + 1) + 1;
-	return backdrop(guithings, font, ptrs.mapname->c_str());
-}
-
-void mgui_click(TTF_Font* font, GUIPage* page, GUIThing* thing)
-{
-	maingui_data* data = (maingui_data*) page->userdata;
-	// save map
-	if (thing == data->savebut && !savemap(data->namebox->value))
-	{
-		// delete everything after maps title
-		for (int i = page->things.size() - 1; page->things[i].type != GUI_TEXT; i--)
-		{
-			SDL_FreeSurface(page->things[i].s);
-			page->things.pop_back();
-		}
-		SDL_FreeSurface(page->things.back().s);
-		page->things.pop_back();
-		SDL_FreeSurface(page->bdr.s);
-		page->bdr = mapcolumns(page->things, font, *data);
-	}
-	// load map
-	else if (thing == data->loadbut && !loadmap(data->namebox->value))
-	{
-		SDL_FreeSurface(page->bdr.s);
-		page->bdr = backdrop(
-			page->things,
-			font, (*data->mapname = data->namebox->value).c_str(),
-			5, 5, page->bdr.border, page->bdr.bg, page->bdr.fg
-		);
-	}
-	// select map
-	else if (thing != data->loadbut && thing != data->savebut)
-	{
-		data->namebox->value = thing->value;
-		redrawinput(font, data->namebox, false);
-	}
-}
-
 int main(int argc, char* argv[])
 {
 	// go to the app's directory
@@ -138,13 +43,14 @@ int main(int argc, char* argv[])
 	// initialize stuff
 	SDL_Window*  window;
 	SDL_Surface* surface;
+	Map* map = create_map(25, 25);
 	if (init(window, surface) || TTF_Init()) { ERROR_RETURN(1); }
 	GUIPage mgui;
 	SDL_SetEventFilter(filter, &mgui.focused);
 	// load textures and map
 	if (loadtex(textures, floortex, ceiltex, ch)) { ERROR_RETURN(2); }
 	std::string mapname = "maze";
-	loadmap(mapname, true);
+	if (loadmap(map, mapname, true)) logfile << SDL_GetError() << std::endl;
 	TTF_Font* font = TTF_OpenFont("font.ttf", 14);
 	if (font == NULL) { logfile << TTF_GetError() << std::endl; logfile.close(); return 3; }
 	char infostr[64]; SDL_Surface* text;
@@ -160,6 +66,7 @@ int main(int argc, char* argv[])
 	ptrs.savebut = addthing(mgui.things, button(font, "Save"), ALIGN_RIGHT);
 	ptrs.loadbut = addthing(mgui.things, button(font, "Load"), ALIGN_LEFT, &ptrs.namebox->r);
 	ptrs.mapname = &mapname;
+	ptrs.map     = map;
 	mgui.bdr     = mapcolumns(mgui.things, font, ptrs);
 	// move gui things to center of screen
 	{
@@ -172,7 +79,7 @@ int main(int argc, char* argv[])
 	}
 	int showgui = 0;
 	// set up variables for game
-	Vec2d<float> pos = { MAPW / 2.f, MAPH / 2.f, -1 };
+	Vec2d<float> pos = { map->w / 2.f, map->h / 2.f, -1 };
 	float heading = 0;
 	// normalized coordinates from leftmost fov to rightmost
 	Vec2d<float> fieldleft, fieldcenter = { 1, 0, 1 }, fieldright;
@@ -194,9 +101,9 @@ int main(int argc, char* argv[])
 			Vec2d<float> last = pos;
 			// update position accounting for heading, and then checking collision
 			pos.x += multiplier * fieldcenter.x;
-			if (tiles[(int) pos.y][(int) pos.x]) pos.x = last.x;
+			if (wall_at(map, pos.x, pos.y)->clip) pos.x = last.x;
 			pos.y += multiplier * fieldcenter.y;
-			if (tiles[(int) pos.y][(int) pos.x]) pos.y = last.y;
+			if (wall_at(map, pos.x, pos.y)->clip) pos.y = last.y;
 			// turning
 			heading += (kb[SDL_SCANCODE_D] - kb[SDL_SCANCODE_A]) 
 			           * (float) tdiff / 400.f;
@@ -205,14 +112,14 @@ int main(int argc, char* argv[])
 			fieldcenter = { cos(heading),       sin(heading),       1 };
 			fieldright  = { cos(heading + fov), sin(heading + fov), 1 };
 			// highlight the face under the crosshair
-			if (editmode) raycast(pos, fieldcenter, tiles, hl);
+			if (editmode) raycast(pos, fieldcenter, map, hl);
 		}
 		// render (floor and ceiling) and walls
 		renderfloors(surface, pos, fieldleft, fieldright, floortex, ceiltex);
 		renderwalls(
 			surface,
 			pos, heading, editmode,
-			tiles,
+			map,
 			fieldleft, fieldright,
 			hl,
 			textures
@@ -257,9 +164,9 @@ int main(int argc, char* argv[])
 					if (response <= 0) { showgui -= response < 0; break; }
 				}
 				// texture information for the highlighted tile/face
-				Uint16 current = editmode ? tiles[hl.y][hl.x] : 0;
-				Uint16 facetex = current >> hl.mag * 4 & 0xf;
-				Uint16 oldtex  = facetex;
+				Wall* hlwall = editmode ? wall_at(map, hl.x, hl.y) : NULL;
+				int facetex = editmode ? face_at(hlwall, hl.mag) : 0;
+				int oldtex  = facetex;
 				switch (keycode)
 				{
 				case SDLK_e:      editmode = !editmode; break;
@@ -271,9 +178,7 @@ int main(int argc, char* argv[])
 				if (editmode && facetex != oldtex)
 				{
 					facetex = (facetex - 1) % 15 + 1;
-					facetex += (facetex <= 0) * 15;
-					tiles[hl.y][hl.x] = current & ~(0xf << hl.mag * 4)
-							    | facetex << hl.mag * 4;
+					face_at(hlwall, hl.mag, facetex + (facetex <= 0) * 15);
 				}
 				break;
 			}
