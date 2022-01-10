@@ -56,6 +56,7 @@ GUIThing button(
 	int marginx = 5, int marginy = 1,
 	DEFAULT_COLOR_ARGS
 );
+GUIThing button(int w, int h, DEFAULT_COLOR_ARGS);
 
 GUIThing inputbox(
 	TTF_Font* font,
@@ -69,7 +70,7 @@ void redrawinput(TTF_Font* font, GUIThing* box, bool editing = true);
 
 // set title to NULL for no title
 GUIThing backdrop(
-	std::vector<GUIThing> guithings,
+	std::vector<GUIThing> &guithings,
 	TTF_Font* font,
 	const char* title,
 	int marginx = 5, int marginy = 5,

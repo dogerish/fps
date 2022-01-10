@@ -5,7 +5,7 @@
 #include "rays.h"
 #include "map.h"
 
-#define MAXDIST 20.f
+#define MAXDIST 30.f
 // value to use for color mod to give fog
 #define FOGMOD(dist) (0xff - 0xef * dist / MAXDIST)
 

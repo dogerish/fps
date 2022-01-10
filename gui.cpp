@@ -55,6 +55,14 @@ GUIThing button(
 	g.r = { 0, 0, g.s->w, g.s->h };
 	return g;
 }
+GUIThing button(int w, int h, COLOR_ARGS(,,))
+{
+	GUIThing g; g.type = GUI_BUTTON; SET_COLORS(g);
+	g.s = SDL_CreateRGBSurface(0, w, h, 32, 0, 0, 0, 0xff);
+	borderfill(g.s, border, bg);
+	g.r = { 0, 0, w, h };
+	return g;
+}
 
 #define TEXTMARGIN 5
 GUIThing inputbox(
@@ -126,7 +134,7 @@ void redrawinput(TTF_Font* font, GUIThing* box, bool editing)
 // sets b to a if a comp b is true
 #define SETB_IF(a, comp, b) if (a comp b) b = a
 GUIThing backdrop(
-	std::vector<GUIThing> guithings,
+	std::vector<GUIThing> &guithings,
 	TTF_Font* font,
 	const char* title,
 	int marginx, int marginy,
