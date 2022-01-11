@@ -2,15 +2,17 @@
 #define RCMAP
 #include <string>
 
-#define MAPVER 1
+#define MAPVER 2
 
 struct Wall {
 	unsigned int n:4;
 	unsigned int w:4;
 	unsigned int s:4;
 	unsigned int e:4;
-	unsigned int clip:1;
+	bool clip:1;
 };
+
+const Wall NULL_WALL = { 1, 1, 1, 1, 1 };
 
 struct Map {
 	int w, h;
@@ -19,6 +21,7 @@ struct Map {
 
 Map* create_map(int w, int h);
 void free_map(Map* map);
+bool withinmap(Map* map, int x, int y);
 Wall* wall_at(Map* map, int x, int y);
 
 // gets and/or sets the face value; returns -1 on invalid face

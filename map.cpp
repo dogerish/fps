@@ -21,8 +21,10 @@ void free_map(Map* map)
 	map = NULL;
 }
 
+bool withinmap(Map* map, int x, int y) { return y >= 0 && y < map->h && x >= 0 && x < map->w; }
+Wall nullcopy;
 Wall* wall_at(Map* map, int x, int y)
-{ return &map->data[y * map->w + x]; }
+{ return withinmap(map, x, y) ? &map->data[y * map->w + x] : &(nullcopy = NULL_WALL); }
 
 int face_at(Wall* wall, int face)
 {
@@ -61,8 +63,8 @@ int loadmap(Map* map, std::string name, bool reset_on_fail)
 	name = "maps/" + name;
 	std::ifstream file(name, std::ios::binary);
 	file >> v;
-	if (v != MAPVER && ++e)
-		SDL_SetError("Invalid map version. Expected %i, but got %i", MAPVER, v);
+	if (v < 1 || v > MAPVER && ++e)
+		SDL_SetError("Invalid map version. Expected %i or less, but got %i", MAPVER, v);
 	else
 	{
 		file.ignore();
@@ -70,7 +72,8 @@ int loadmap(Map* map, std::string name, bool reset_on_fail)
 		{
 			char se = file.get(), nw = file.get();
 			set_faces(&map->data[i], se & 0xf, se >> 4, nw & 0xf, nw >> 4);
-			map->data[i].clip = nw || se;
+			if (v == 1) map->data[i].clip = nw || se;
+			else map->data[i].clip = file.get();
 		}
 	}
 	if (!file.good() && ++e)
@@ -98,6 +101,7 @@ int savemap(Map* map, std::string name)
 	{
 		file.put(map->data[i].s | map->data[i].e << 4);
 		file.put(map->data[i].n | map->data[i].w << 4);
+		file.put(map->data[i].clip);
 	}
 	if (!file.good() && ++e) SDL_SetError("Error while saving '%s'", name.c_str());
 	file.close();

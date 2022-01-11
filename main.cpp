@@ -90,9 +90,9 @@ int main(int argc, char* argv[])
 			Vec2d<float> last = pos;
 			// update position accounting for heading, and then checking collision
 			pos.x += multiplier * fieldcenter.x;
-			if (wall_at(map, pos.x, pos.y)->clip) pos.x = last.x;
+			if (wall_at(map, floor(pos.x), floor(pos.y))->clip) pos.x = last.x;
 			pos.y += multiplier * fieldcenter.y;
-			if (wall_at(map, pos.x, pos.y)->clip) pos.y = last.y;
+			if (wall_at(map, floor(pos.x), floor(pos.y))->clip) pos.y = last.y;
 			// turning
 			heading += (kb[SDL_SCANCODE_D] - kb[SDL_SCANCODE_A]) 
 			           * (float) tdiff / 400.f;

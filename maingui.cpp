@@ -111,7 +111,7 @@ void wallgui_update(TTF_Font* font, GUIPage* page, int dt)
 	// highlight tile that is being looked at
 	int new_hl = data->hl->x + data->hl->y * data->map->w;
 	wallbutton_update(data->start + data->last_hl);
-	if (*data->editmode)
+	if (*data->editmode && withinmap(data->map, data->hl->x, data->hl->y))
 	{
 		data->last_hl = new_hl;
 		SDL_SetSurfaceColorMod(data->start[data->last_hl].s, 0xff, 0, 0xff);
