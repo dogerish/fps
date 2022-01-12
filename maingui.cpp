@@ -105,6 +105,13 @@ int wallgui_click(TTF_Font* font, GUIPage* page, GUIThing* thing)
 {
 	wallgui_data* data = (wallgui_data*) page->userdata;
 	int i = thing - &page->things[WGS];
+	// refresh buttons
+	if (thing == &page->things.back())
+	{
+		for (int j = 0; j < data->map->w * data->map->h; j++)
+			wallbutton_update(&page->things[WGS + j], data->map->data[j].clip);
+		return 0;
+	}
 	data->map->data[i].clip = thing->overflown = !thing->overflown;
 	if (data->map->data[i].n == 0) set_faces(&data->map->data[i], 1, 1, 1, 1);
 	wallbutton_update(thing);
@@ -191,6 +198,7 @@ void setup_wallgui(
 			wallbutton_update(g, wall_at(map, x, y)->clip);
 		}
 	}
+	addthing(wallgui.things, button(font, "Refresh"), ALIGN_RIGHT);
 	ptrs->map = map;
 	ptrs->pos = pos; ptrs->fieldcenter = fieldcenter; ptrs->editmode = editmode; ptrs->hl = hl;
 	wallgui.bdr = backdrop(wallgui.things, font, "Wall Editor", 10, 10);
