@@ -30,6 +30,7 @@ int face_at(Wall* wall, int face, int value);
 // sets all the faces at once
 void set_faces(Wall* wall, int s, int e, int n, int w);
 
+void newmap(Map* map);
 // returns nonzero on failure; error in SDL_GetError()
 int loadmap(Map* map, std::string name, bool reset_on_fail = false);
 int savemap(Map* map, std::string name);

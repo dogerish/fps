@@ -10,22 +10,17 @@
 #include "rays.h"
 
 struct maingui_data {
-	GUIThing* namebox;
-	GUIThing* savebut;
-	GUIThing* loadbut;
-	GUIThing* wallbut;
 	std::string* mapname;
 	Map* map;
 };
 
 // show available maps, returns new backdrop
-GUIThing mapcolumns(std::vector<GUIThing> &guithings, TTF_Font* font, maingui_data &ptrs);
+GUIThing mapcolumns(std::vector<GUIThing> &guithings, TTF_Font* font, std::string& mapname);
 
 int  mgui_click(TTF_Font* font, GUIPage* page, GUIThing* thing);
 void setup_mgui(GUIPage &mgui, TTF_Font* font, std::string &mapname, Map* map);
 
 struct wallgui_data {
-	GUIThing* start;
 	Map* map;
 	Vec2d<float>* pos;
 	Vec2d<float>* fieldcenter;

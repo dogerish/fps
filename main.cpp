@@ -94,7 +94,7 @@ int main(int argc, char* argv[])
 			pos.y += multiplier * fieldcenter.y;
 			if (wall_at(map, floor(pos.x), floor(pos.y))->clip) pos.y = last.y;
 			// turning
-			heading += (kb[SDL_SCANCODE_D] - kb[SDL_SCANCODE_A]) 
+			heading += (kb[SDL_SCANCODE_D] - kb[SDL_SCANCODE_A])
 			           * (float) tdiff / 400.f;
 			// update fov variables
 			fieldleft   = { cos(heading - fov), sin(heading - fov), 1 };

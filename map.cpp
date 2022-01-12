@@ -57,6 +57,14 @@ void set_faces(Wall* wall, int s, int e, int n, int w)
 	wall->w = w;
 }
 
+void newmap(Map* map)
+{
+	for (int y = 0; y < map->h; y++) for (int x = 0; x < map->w; x++)
+	{
+		set_faces(wall_at(map, x, y), 1, 1, 1, 1);
+		wall_at(map, x, y)->clip = !(x % (map->w - 1) && y % (map->h - 1));
+	}
+}
 int loadmap(Map* map, std::string name, bool reset_on_fail)
 {
 	int e = 0, v;
@@ -80,12 +88,7 @@ int loadmap(Map* map, std::string name, bool reset_on_fail)
 	{
 		SDL_SetError("Error while loading '%s'", name.c_str());
 		// set to default map
-		if (reset_on_fail)
-			for (int y = 0; y < map->h; y++) for (int x = 0; x < map->w; x++)
-			{
-				set_faces(wall_at(map, x, y), 1, 1, 1, 1);
-				wall_at(map, x, y)->clip = !(x % (map->w - 1) && y % (map->h - 1));
-			}
+		if (reset_on_fail) newmap(map);
 	}
 	file.close();
 	return e;

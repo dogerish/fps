@@ -9,31 +9,35 @@
 #include "map.h"
 namespace fs = std::filesystem;
 
+// indices for important maingui things
+enum MAINGUI_INDICES { MGN, MGS, MGL, MGW, MGNEW };
+
 // show available maps, returns new backdrop
-GUIThing mapcolumns(std::vector<GUIThing> &guithings, TTF_Font* font, maingui_data &ptrs)
+GUIThing mapcolumns(std::vector<GUIThing> &guithings, TTF_Font* font, std::string& mapname)
 {
 	std::vector<std::string> entries;
 	for (auto entry : fs::directory_iterator("maps/"))
 		entries.push_back(entry.path().filename().string());
+	SDL_Rect href = guithings.back().r;
 	columnate(
 		guithings, font, "Maps", entries,
-		{ ptrs.namebox->r.x, ptrs.loadbut->r.y, ptrs.namebox->r.w, ptrs.loadbut->r.h },
+		{ guithings[MGN].r.x, href.y, guithings[MGN].r.w, href.h },
 		5, 5,
 		GRAY(0xff), DGRAY(0xff), GRAY(0xff)
 	);
-	// update pointers
-	ptrs.wallbut = (ptrs.loadbut = (ptrs.savebut = (ptrs.namebox = &guithings[0]) + 1) + 1) + 1;
-	return backdrop(guithings, font, ptrs.mapname->c_str());
+	return backdrop(guithings, font, mapname.c_str());
 }
 
 int mgui_click(TTF_Font* font, GUIPage* page, GUIThing* thing)
 {
 	maingui_data* data = (maingui_data*) page->userdata;
-	if (thing == data->wallbut) return 2; // open wall gui
-	// save map
-	else if (thing == data->savebut && !savemap(data->map, data->namebox->value))
+	int idx = thing - &page->things[0];
+	switch (idx)
 	{
-		// delete everything after maps title
+	case MGW: return 2; // open wall gui
+	case MGS: // save map
+		if (savemap(data->map, page->things[MGN].value)) return 0;
+		// update map listing
 		for (int i = page->things.size() - 1; page->things[i].type != GUI_TEXT; i--)
 		{
 			SDL_FreeSurface(page->things[i].s);
@@ -42,23 +46,24 @@ int mgui_click(TTF_Font* font, GUIPage* page, GUIThing* thing)
 		SDL_FreeSurface(page->things.back().s);
 		page->things.pop_back();
 		SDL_FreeSurface(page->bdr.s);
-		page->bdr = mapcolumns(page->things, font, *data);
-	}
-	// load map
-	else if (thing == data->loadbut && !loadmap(data->map, data->namebox->value))
-	{
+		page->bdr = mapcolumns(page->things, font, *data->mapname);
+		break;
+	case MGL: // load map or new map
+		if (loadmap(data->map, page->things[MGN].value)) return 0;
+	case MGNEW:
+		*data->mapname = (idx == MGNEW) ? "newmap" : page->things[MGN].value;
+		if (idx == MGNEW) newmap(data->map);
 		SDL_FreeSurface(page->bdr.s);
 		page->bdr = backdrop(
 			page->things,
-			font, (*data->mapname = data->namebox->value).c_str(),
+			font, data->mapname->c_str(),
 			5, 5, page->bdr.border, page->bdr.bg, page->bdr.fg
 		);
-	}
-	// select map
-	else if (thing != data->loadbut && thing != data->savebut)
-	{
-		data->namebox->value = thing->value;
-		redrawinput(font, data->namebox, false);
+		break;
+	default: // select map
+		page->things[MGN].value = thing->value;
+		redrawinput(font, &page->things[MGN], false);
+		break;
 	}
 	return 0;
 }
@@ -69,20 +74,21 @@ void setup_mgui(GUIPage &mgui, TTF_Font* font, std::string &mapname, Map* map)
 	mgui.userdata = ptrs;
 	mgui.button_click = mgui_click;
 	// reserve enough memory so that the pointers remain valid
-	mgui.things.reserve(4);
+	mgui.things.reserve(5);
 	// add things and ste up pointers
-	ptrs->namebox = addthing(mgui.things, inputbox(font, "Map name:", 100));
-	ptrs->savebut = addthing(mgui.things, button(font, "Save"), ALIGN_RIGHT);
-	ptrs->loadbut = addthing(mgui.things, button(font, "Load"), ALIGN_LEFT, &ptrs->namebox->r);
-	ptrs->wallbut = addthing(
-		mgui.things, button(font, "Wall Editor"),
-		ALIGN_CENTER, &ptrs->namebox->r
-	);
+	GUIThing* ref = addthing(mgui.things, inputbox(font, "Map name:", 100));
+	addthing(mgui.things, button(font, "Save"), ALIGN_RIGHT);
+	addthing(mgui.things, button(font, "Load"), ALIGN_LEFT, &ref->r);
+	ref = addthing(mgui.things, button(font, "Wall Editor"), ALIGN_CENTER, &ref->r);
+	addthing(mgui.things, button(font, "New Map"), ALIGN_CENTER, &ref->r);
 	ptrs->mapname = &mapname;
 	ptrs->map     = map;
-	mgui.bdr      = mapcolumns(mgui.things, font, *ptrs);
+	mgui.bdr      = mapcolumns(mgui.things, font, mapname);
 	center_page(mgui, { WIDTH / 2, HEIGHT / 2 });
 }
+
+// starting index of the wall buttons
+#define WGS 0
 
 void wallbutton_update(GUIThing* g)
 {
@@ -98,7 +104,7 @@ void wallbutton_update(GUIThing* g, int overflown)
 int wallgui_click(TTF_Font* font, GUIPage* page, GUIThing* thing)
 {
 	wallgui_data* data = (wallgui_data*) page->userdata;
-	int i = thing - data->start;
+	int i = thing - &page->things[WGS];
 	data->map->data[i].clip = thing->overflown = !thing->overflown;
 	if (data->map->data[i].n == 0) set_faces(&data->map->data[i], 1, 1, 1, 1);
 	wallbutton_update(thing);
@@ -110,13 +116,12 @@ void wallgui_update(TTF_Font* font, GUIPage* page, int dt)
 	wallgui_data* data = (wallgui_data*) page->userdata;
 	// highlight tile that is being looked at
 	int new_hl = data->hl->x + data->hl->y * data->map->w;
-	wallbutton_update(data->start + data->last_hl);
+	wallbutton_update(&page->things[WGS + data->last_hl]);
 	if (*data->editmode && withinmap(data->map, data->hl->x, data->hl->y))
 	{
 		data->last_hl = new_hl;
-		SDL_SetSurfaceColorMod(data->start[data->last_hl].s, 0xff, 0, 0xff);
+		SDL_SetSurfaceColorMod(page->things[WGS + data->last_hl].s, 0xff, 0, 0xff);
 	}
-
 }
 #define SQRT2OVER4 0.3535533906 // sqrt(2) / 4
 void wallgui_draw(SDL_Surface* surface, GUIPage* page)
@@ -126,8 +131,8 @@ void wallgui_draw(SDL_Surface* surface, GUIPage* page)
 	wallgui_data* data = (wallgui_data*) page->userdata;
 	Uint32 color = SDL_MapRGBA(surface->format, 0xd0, 0, 0xff, 0xd0);
 	SDL_Rect r = { (int) (data->pos->x * 10), (int) (data->pos->y * 10), 7, 7 };
-	r.x += data->start->r.x;
-	r.y += data->start->r.y;
+	r.x += page->things[WGS].r.x;
+	r.y += page->things[WGS].r.y;
 	int len = 10, stroke = 3;
 	// if facing > 112.5 deg: -1; < 22.5 deg: 1; 0; but don't care about top or bottom hemi
 	// above, but using unit circle magic
@@ -186,7 +191,6 @@ void setup_wallgui(
 			wallbutton_update(g, wall_at(map, x, y)->clip);
 		}
 	}
-	ptrs->start = &wallgui.things[0];
 	ptrs->map = map;
 	ptrs->pos = pos; ptrs->fieldcenter = fieldcenter; ptrs->editmode = editmode; ptrs->hl = hl;
 	wallgui.bdr = backdrop(wallgui.things, font, "Wall Editor", 10, 10);
