@@ -5,6 +5,12 @@
 #include SDL2_H
 #include "map.h"
 
+void copy_pixel(
+	Uint8* srcpx, SDL_Surface* src, SDL_Point srcpt,
+	Uint32* dstpx, SDL_Surface* dst, SDL_Point dstpt,
+	float vmod
+);
+
 void renderfloors(
 	SDL_Surface* surface,
 	Vec2d<float> pos,

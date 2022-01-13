@@ -9,9 +9,30 @@
 // value to use for color mod to give fog
 #define FOGMOD(dist) (0xff - 0xef * dist / MAXDIST)
 
-#define POINTERUP(surface) p = (Uint8*) (surface->pixels) + 3 * (src.y * TEXSIZE + src.x)
-#define DRAWPOINT(y) winpixels[y * WIDTH + x] =\
-                          SDL_MapRGBA(surface->format, *p*v, *(p+1)*v, *(p+2)*v, 0xff)
+void copy_pixel(
+	Uint8* srcpx, SDL_Surface* src, SDL_Point srcpt,
+	Uint32* dstpx, SDL_Surface* dst, SDL_Point dstpt,
+	float vmod
+)
+{
+	Uint32 v;
+	Uint8* p = srcpx + srcpt.y * src->pitch + srcpt.x * src->format->BytesPerPixel;
+	switch (src->format->BytesPerPixel)
+	{
+	case 1: v = *p; break;
+	case 2: v = *(Uint16*)p; break;
+	case 3:
+		v = (SDL_BYTEORDER == SDL_BIG_ENDIAN)
+			? p[0] << 16 | p[1] << 8 | p[2]
+			: p[2] << 16 | p[1] << 8 | p[0];
+		break;
+	case 4: v = *(Uint32*)p; break;
+	}
+	Uint8 r, g, b, a;
+	SDL_GetRGBA(v, src->format, &r, &g, &b, &a);
+	dstpx[dstpt.y * dst->w + dstpt.x] = SDL_MapRGBA(dst->format, r*vmod, g*vmod, b*vmod, a);
+}
+
 void renderfloors(
 	SDL_Surface* surface,
 	Vec2d<float> pos,
@@ -21,8 +42,8 @@ void renderfloors(
 {
 	SDL_LockSurface(surface);
 	Uint32* winpixels = (Uint32*) surface->pixels;
+	Uint8* f = (Uint8*) floortex->pixels, *c = (Uint8*) ceiltex->pixels;
 	SDL_Point src;
-	Uint8* p;
 	for (int y = HEIGHT / 2; y < HEIGHT; y++)
 	{
 		// distance to floor horizontally
@@ -43,8 +64,8 @@ void renderfloors(
 		{
 			src.x = (int) ((mappos.x - (int) mappos.x) * TEXSIZE) & TEXSIZE - 1;
 			src.y = (int) ((mappos.y - (int) mappos.y) * TEXSIZE) & TEXSIZE - 1;
-			POINTERUP(floortex); DRAWPOINT(y);
-			POINTERUP(ceiltex);  DRAWPOINT((HEIGHT - y));
+			copy_pixel(f, floortex, src, winpixels, surface, { x, y }, v);
+			copy_pixel(c, ceiltex, src, winpixels, surface, { x, HEIGHT - y }, v);
 
 			mappos.x += step.x; mappos.y += step.y;
 		}
