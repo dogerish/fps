@@ -12,13 +12,12 @@ int init(SDL_Window* &window, SDL_Surface* &surface)
 
 void quit(
 	SDL_Surface* textures[], SDL_Surface* floortex, SDL_Surface* ceiltex, SDL_Surface* ch,
-	SDL_Window* window, SDL_Surface* surface
+	SDL_Window* window
 )
 {
 	for (int i = 0; i < 15; i++) SDL_FreeSurface(textures[i]);
 	SDL_FreeSurface(floortex);
 	SDL_FreeSurface(ceiltex);
-	SDL_FreeSurface(surface);
 	SDL_FreeSurface(ch);
 	SDL_DestroyWindow(window);
 	SDL_Quit();

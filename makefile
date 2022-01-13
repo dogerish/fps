@@ -16,7 +16,7 @@ OBJ := $(addprefix $(TDIR)/,$(OBJ))
 
 TARGET=game$(EXT)
 $(TARGET): $(TDIR) $(OBJ)
-	$(CXX) $(CXXFLAGS) $(OBJ) $(LIBS) -o $@
+	$(CXX)  $(OBJ) $(LIBS) -o $@
 
 $(TDIR): ; mkdir $(TDIR)
 

@@ -20,7 +20,7 @@ int init(SDL_Window* &window, SDL_Surface* &surface);
 
 void quit(
 	SDL_Surface* textures[], SDL_Surface* floortex, SDL_Surface* ceiltex, SDL_Surface* ch,
-	SDL_Window* window, SDL_Surface* surface
+	SDL_Window* window
 );
 
 // load textures; 0 on success

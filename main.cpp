@@ -15,7 +15,7 @@
 #include "map.h"
 namespace fs = std::filesystem;
 
-#define QUITGAME quit(textures, floortex, ceiltex, ch, window, surface)
+#define QUITGAME quit(textures, floortex, ceiltex, ch, window)
 #define ERROR_RETURN(code) \
 	logfile << SDL_GetError() << std::endl; QUITGAME; \
 	logfile.close(); \
@@ -47,10 +47,10 @@ int main(int argc, char* argv[])
 	// go to the app's directory
 	fs::current_path(((fs::path) argv[0]).parent_path());
 	// initialize stuff
-	SDL_Window*  window;
-	SDL_Surface* surface;
-	Map* map = create_map(25, 25);
+	SDL_Window*  window = NULL;
+	SDL_Surface* surface = NULL;
 	if (init(window, surface) || TTF_Init()) { ERROR_RETURN(1); }
+	Map* map = create_map(25, 25);
 	SDL_SetEventFilter(filter, map);
 	// load textures and map
 	if (loadtex(textures, floortex, ceiltex, ch)) { ERROR_RETURN(2); }
@@ -196,6 +196,8 @@ int main(int argc, char* argv[])
 		SDL_FreeSurface(p.bdr.s);
 	}
 	delete (maingui_data*) guipages[0].userdata;
+	delete (wallgui_data*) guipages[1].userdata;
+	free_map(map);
 	QUITGAME;
 	logfile.close();
 	return 0;
