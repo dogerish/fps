@@ -9,30 +9,6 @@
 // value to use for color mod to give fog
 #define FOGMOD(dist) (0xff - 0xef * dist / MAXDIST)
 
-void copy_pixel(
-	Uint8* srcpx, SDL_Surface* src, SDL_Point srcpt,
-	Uint32* dstpx, SDL_Surface* dst, SDL_Point dstpt,
-	float vmod
-)
-{
-	Uint32 v;
-	Uint8* p = srcpx + srcpt.y * src->pitch + srcpt.x * src->format->BytesPerPixel;
-	switch (src->format->BytesPerPixel)
-	{
-	case 1: v = *p; break;
-	case 2: v = *(Uint16*)p; break;
-	case 3:
-		v = (SDL_BYTEORDER == SDL_BIG_ENDIAN)
-			? p[0] << 16 | p[1] << 8 | p[2]
-			: p[2] << 16 | p[1] << 8 | p[0];
-		break;
-	case 4: v = *(Uint32*)p; break;
-	}
-	Uint8 r, g, b, a;
-	SDL_GetRGBA(v, src->format, &r, &g, &b, &a);
-	dstpx[dstpt.y * dst->w + dstpt.x] = SDL_MapRGBA(dst->format, r*vmod, g*vmod, b*vmod, a);
-}
-
 void renderfloors(
 	SDL_Surface* surface,
 	Vec2d<float> pos,
@@ -42,32 +18,39 @@ void renderfloors(
 {
 	SDL_LockSurface(surface);
 	Uint32* winpixels = (Uint32*) surface->pixels;
-	Uint8* f = (Uint8*) floortex->pixels, *c = (Uint8*) ceiltex->pixels;
-	SDL_Point src;
+	Uint32* f = (Uint32*) floortex->pixels, *c = (Uint32*) ceiltex->pixels;
+	float dist, stx, sty, mpx, mpy;
+	int sx, sy;
+	Uint32 color;
+	Uint8 v;
 	for (int y = HEIGHT / 2; y < HEIGHT; y++)
 	{
 		// distance to floor horizontally
-		float dist = HEIGHT / (SQRT_2 * (y - HEIGHT / 2));
-		Vec2d<float> step = {
-			dist / WIDTH * (fieldright.x - fieldleft.x),
-			dist / WIDTH * (fieldright.y - fieldleft.y),
-			-1
-		};
+		dist = HEIGHT / (SQRT_2 * (y - HEIGHT / 2));
+		stx = dist / WIDTH * (fieldright.x - fieldleft.x);
+		sty = dist / WIDTH * (fieldright.y - fieldleft.y);
 		// get map coords
-		Vec2d<float> mappos = {
-			pos.x + dist * fieldleft.x,
-			pos.y + dist * fieldleft.y,
-			-1
-		};
-		float v = FOGMOD(dist) / 255.f;
+		mpx = pos.x + dist * fieldleft.x;
+		mpy = pos.y + dist * fieldleft.y;
+		v = FOGMOD(dist);
 		for (int x = 0; x < WIDTH; x++)
 		{
-			src.x = (int) ((mappos.x - (int) mappos.x) * TEXSIZE) & TEXSIZE - 1;
-			src.y = (int) ((mappos.y - (int) mappos.y) * TEXSIZE) & TEXSIZE - 1;
-			copy_pixel(f, floortex, src, winpixels, surface, { x, y }, v);
-			copy_pixel(c, ceiltex, src, winpixels, surface, { x, HEIGHT - y }, v);
+			sx = (int) ((mpx - (int) mpx) * TEXSIZE) & TEXSIZE - 1;
+			sy = (int) ((mpy - (int) mpy) * TEXSIZE) & TEXSIZE - 1;
+			color = c[sy * ceiltex->w + sx];
+			winpixels[(HEIGHT - y) * surface->w + x] =
+				(color >> 24 & 0xff) * v / 255 << 24 |
+				(color >> 16 & 0xff) * v / 255 << 16 |
+				(color >>  8 & 0xff) * v / 255 <<  8 |
+				(color       & 0xff) * v / 255;
+			color = f[sy * floortex->w + sx];
+			winpixels[y * surface->w + x] =
+				(color >> 24 & 0xff) * v / 255 << 24 |
+				(color >> 16 & 0xff) * v / 255 << 16 |
+				(color >>  8 & 0xff) * v / 255 <<  8 |
+				(color       & 0xff) * v / 255;
 
-			mappos.x += step.x; mappos.y += step.y;
+			mpx += stx; mpy += sty;
 		}
 	}
 	SDL_UnlockSurface(surface);

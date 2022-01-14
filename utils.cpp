@@ -5,7 +5,11 @@ int init(SDL_Window* &window, SDL_Surface* &surface)
 {
 	return (
 		   SDL_Init(SDL_INIT_VIDEO)
-		|| (window = SDL_CreateWindow("raycaster", 0, 0, WIDTH, HEIGHT, 0)) == NULL
+		|| (window = SDL_CreateWindow(
+			"raycaster",
+			SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WIDTH, HEIGHT,
+			0
+		)) == NULL
 		|| (surface = SDL_GetWindowSurface(window)) == NULL
 	) * -1;
 }
@@ -38,8 +42,21 @@ int loadtex(
 		sprintf(filename, "textures/%i.bmp", i + 1);
 		err |= (textures[i] = SDL_LoadBMP(filename)) == NULL;
 	}
-	err |= (floortex = SDL_LoadBMP("textures/floor.bmp")) == NULL;
-	err |= (ceiltex = SDL_LoadBMP("textures/ceiling.bmp")) == NULL;
+	SDL_Surface* loadedsurf = SDL_LoadBMP("textures/floor.bmp");
+	err |= loadedsurf == NULL;
+	if (loadedsurf != NULL)
+	{
+		floortex = SDL_CreateRGBSurface(0, loadedsurf->w, loadedsurf->h, 32, 0, 0, 0, 0);
+		SDL_BlitSurface(loadedsurf, NULL, floortex, NULL);
+		SDL_FreeSurface(loadedsurf);
+	}
+	err |= (loadedsurf = SDL_LoadBMP("textures/ceiling.bmp")) == NULL;
+	if (loadedsurf != NULL)
+	{
+		ceiltex = SDL_CreateRGBSurface(0, loadedsurf->w, loadedsurf->h, 32, 0, 0, 0, 0);
+		SDL_BlitSurface(loadedsurf, NULL, ceiltex, NULL);
+		SDL_FreeSurface(loadedsurf);
+	}
 	err |= (ch = SDL_LoadBMP("textures/crosshair.bmp")) == NULL;
 	return err * -1;
 }
