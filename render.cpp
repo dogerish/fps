@@ -38,14 +38,12 @@ void renderfloors(
 			sx = (int) ((mpx - (int) mpx) * TEXSIZE) & TEXSIZE - 1;
 			sy = (int) ((mpy - (int) mpy) * TEXSIZE) & TEXSIZE - 1;
 			color = c[sy * ceiltex->w + sx];
-			winpixels[(HEIGHT - y) * surface->w + x] =
-				(color >> 24 & 0xff) * v / 255 << 24 |
+			winpixels[(HEIGHT - 1 - y) * WIDTH + x] =
 				(color >> 16 & 0xff) * v / 255 << 16 |
 				(color >>  8 & 0xff) * v / 255 <<  8 |
 				(color       & 0xff) * v / 255;
 			color = f[sy * floortex->w + sx];
-			winpixels[y * surface->w + x] =
-				(color >> 24 & 0xff) * v / 255 << 24 |
+			winpixels[y * WIDTH + x] =
 				(color >> 16 & 0xff) * v / 255 << 16 |
 				(color >>  8 & 0xff) * v / 255 <<  8 |
 				(color       & 0xff) * v / 255;
@@ -101,7 +99,7 @@ void renderwalls(
 		// sample at the right x location of the texture
 		src.x = ((tile.mag % 2) ?  pos.x + d.x - tile.x : pos.y + d.y - tile.y) * TEXSIZE;
 		// scale and paste the slice on the screen
-		SDL_BlitScaled(t, &src, surface, &r);
+		SDL_SoftStretchLinear(t, &src, surface, &r);
 	}
 }
 

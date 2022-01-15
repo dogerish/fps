@@ -23,8 +23,12 @@ void quit(
 	SDL_Window* window
 );
 
+// load a bmp file and convert to specified format
+SDL_Surface* loadwithfmt(const char* file, Uint32 fmt);
+
 // load textures; 0 on success
 int loadtex(
+	Uint32 fmt,
 	SDL_Surface* textures[],
 	SDL_Surface* &floortex,
 	SDL_Surface* &ceiltex,

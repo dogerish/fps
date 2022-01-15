@@ -3,15 +3,16 @@
 
 int init(SDL_Window* &window, SDL_Surface* &surface)
 {
-	return (
-		   SDL_Init(SDL_INIT_VIDEO)
-		|| (window = SDL_CreateWindow(
+	int err = 0;
+	err |= SDL_Init(SDL_INIT_VIDEO);
+	err |= (window = SDL_CreateWindow(
 			"raycaster",
 			SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WIDTH, HEIGHT,
 			0
-		)) == NULL
-		|| (surface = SDL_GetWindowSurface(window)) == NULL
-	) * -1;
+		)) == NULL;
+	err |= (surface = SDL_GetWindowSurface(window)) == NULL;
+	if (surface) SDL_SetSurfaceRLE(surface, 1);
+	return err;
 }
 
 void quit(
@@ -27,8 +28,18 @@ void quit(
 	SDL_Quit();
 }
 
+SDL_Surface* loadwithfmt(const char* file, Uint32 fmt)
+{
+	SDL_Surface* tmp = SDL_LoadBMP(file);
+	if (!tmp) return NULL;
+	SDL_Surface* s = SDL_ConvertSurfaceFormat(tmp, fmt, 0);
+	SDL_FreeSurface(tmp);
+	return s;
+}
+
 // load textures; 0 on success
 int loadtex(
+	Uint32 fmt,
 	SDL_Surface* textures[],
 	SDL_Surface* &floortex,
 	SDL_Surface* &ceiltex,
@@ -40,23 +51,13 @@ int loadtex(
 	for (int i = 0; i < 15; i++)
 	{
 		sprintf(filename, "textures/%i.bmp", i + 1);
-		err |= (textures[i] = SDL_LoadBMP(filename)) == NULL;
+		err |= (textures[i] = loadwithfmt(filename, fmt)) == NULL;
+		if (textures[i]) SDL_SetSurfaceRLE(textures[i], 1);
 	}
-	SDL_Surface* loadedsurf = SDL_LoadBMP("textures/floor.bmp");
-	err |= loadedsurf == NULL;
-	if (loadedsurf != NULL)
-	{
-		floortex = SDL_CreateRGBSurface(0, loadedsurf->w, loadedsurf->h, 32, 0, 0, 0, 0);
-		SDL_BlitSurface(loadedsurf, NULL, floortex, NULL);
-		SDL_FreeSurface(loadedsurf);
-	}
-	err |= (loadedsurf = SDL_LoadBMP("textures/ceiling.bmp")) == NULL;
-	if (loadedsurf != NULL)
-	{
-		ceiltex = SDL_CreateRGBSurface(0, loadedsurf->w, loadedsurf->h, 32, 0, 0, 0, 0);
-		SDL_BlitSurface(loadedsurf, NULL, ceiltex, NULL);
-		SDL_FreeSurface(loadedsurf);
-	}
-	err |= (ch = SDL_LoadBMP("textures/crosshair.bmp")) == NULL;
-	return err * -1;
+	err |= (floortex = loadwithfmt("textures/floor.bmp", fmt))   == NULL;
+	err |= (ceiltex  = loadwithfmt("textures/ceiling.bmp", fmt)) == NULL;
+	if (floortex) { SDL_SetSurfaceRLE(floortex, 0); SDL_LockSurface(floortex); }
+	if (ceiltex)  { SDL_SetSurfaceRLE(ceiltex,  0); SDL_LockSurface(ceiltex);  }
+	err |= (ch = loadwithfmt("textures/crosshair.bmp", fmt)) == NULL;
+	return err;
 }
