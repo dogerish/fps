@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
 	Map* map = create_map(25, 25);
 	SDL_SetEventFilter(filter, map);
 	// load textures and map
-	if (loadtex(textures, floortex, ceiltex, ch)) { ERROR_RETURN(2); }
+	if (loadtex(surface->format->format, textures, floortex, ceiltex, ch)) { ERROR_RETURN(2); }
 	std::string mapname = "maze";
 	if (loadmap(map, mapname, true)) logfile << SDL_GetError() << std::endl;
 	TTF_Font* font = TTF_OpenFont("font.ttf", 14);
