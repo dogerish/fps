@@ -25,8 +25,8 @@ Vec2d<float> raycast(
 	// first time for axis, do add step on whatever iteration
 	bool firstof = true, doAdd = true;
 	// start with the smaller magnitude
-	int axis = dy.mag < dx.mag || isnan(dx.mag);
-	if (isnan(axes[axis]->mag))
+	int axis = dy.mag < dx.mag || std::isnan(dx.mag);
+	if (std::isnan(axes[axis]->mag))
 	{
 		*axes[axis] = { 0, 0, 0};
 		vel.y = -1;

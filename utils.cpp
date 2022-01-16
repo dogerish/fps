@@ -1,5 +1,6 @@
 #include "utils.h"
 #include SDL2_H
+#include <cstdio>
 
 int init(SDL_Window* &window, SDL_Surface* &surface)
 {

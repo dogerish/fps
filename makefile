@@ -1,8 +1,8 @@
 ifdef CROSS
-	CXX=i686-w64-mingw32-g++
-	SDL2_CFG=/usr/local/cross-tools/i686-w64-mingw32/bin/sdl2-config
-	TDIR=win32
-	EXT=.exe
+	CXX:=$(CROSS)-w64-mingw32-g++
+	SDL2_CFG:=/usr/local/cross-tools/$(CROSS)-w64-mingw32/bin/sdl2-config
+	TDIR:=win-$(CROSS)
+	EXT:=-$(CROSS).exe
 else
 	CXX=g++
 	SDL2_CFG=sdl2-config

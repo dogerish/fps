@@ -1,5 +1,13 @@
 #! /bin/bash
 # builds a zip of the project for windows
-make CROSS=WIN32 || exit $?
-rm game-win32.zip 2> /dev/null
-zip dlls.zip -u game.exe *.ttf textures/*.bmp maps/* -O game-win32.zip
+if [[ -z "$1" ]];
+then
+	"$0" x86_64
+	"$0" i686
+	exit
+fi
+echo "---- $1"
+export CROSS=$1
+make || exit $?
+rm game-${CROSS}.zip 2> /dev/null
+zip dlls-${CROSS}.zip -u game-${CROSS}.exe *.ttf textures/*.bmp maps/* -O game-${CROSS}.zip
