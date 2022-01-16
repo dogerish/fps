@@ -99,7 +99,7 @@ void renderwalls(
 		// sample at the right x location of the texture
 		src.x = ((tile.mag % 2) ?  pos.x + d.x - tile.x : pos.y + d.y - tile.y) * TEXSIZE;
 		// scale and paste the slice on the screen
-		SDL_SoftStretchLinear(t, &src, surface, &r);
+		SDL_BlitScaled(t, &src, surface, &r);
 	}
 }
 

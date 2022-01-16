@@ -59,6 +59,7 @@ int loadtex(
 	err |= (ceiltex  = loadwithfmt("textures/ceiling.bmp", fmt)) == NULL;
 	if (floortex) { SDL_SetSurfaceRLE(floortex, 0); SDL_LockSurface(floortex); }
 	if (ceiltex)  { SDL_SetSurfaceRLE(ceiltex,  0); SDL_LockSurface(ceiltex);  }
-	err |= (ch = loadwithfmt("textures/crosshair.bmp", fmt)) == NULL;
+	err |= (ch = SDL_LoadBMP("textures/crosshair.bmp")) == NULL;
+	if (ch) SDL_SetSurfaceRLE(ch, 1);
 	return err;
 }
