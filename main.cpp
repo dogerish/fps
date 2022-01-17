@@ -38,6 +38,8 @@ static int SDLCALL filter(void* userdata, SDL_Event* e)
 		case SDL_KEYDOWN:
 		case SDL_MOUSEBUTTONDOWN:
 			return 1;
+		case SDL_WINDOWEVENT:
+			return e->window.event == SDL_WINDOWEVENT_SIZE_CHANGED;
 		default:
 			return 0;
 	}
@@ -50,7 +52,8 @@ int main(int argc, char* argv[])
 	// initialize stuff
 	SDL_Window*  window = NULL;
 	SDL_Surface* surface = NULL;
-	if (init(window, surface)) { ERROR_RETURN(1, SDL); }
+	if (init(window, surface, "WalkerPonk 2069", 720, 480)) { ERROR_RETURN(1, SDL); }
+	int draw_w = surface->w, draw_h = surface->h;
 	if (TTF_Init()) { ERROR_RETURN(1, TTF); }
 	if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) { ERROR_RETURN(1, IMG); }
 	Map* map = create_map(25, 25);
@@ -76,8 +79,8 @@ int main(int argc, char* argv[])
 	// set up gui things
 	const int NUMPAGES = 2;
 	GUIPage guipages[NUMPAGES];
-	setup_mgui(guipages[0], font, mapname, map);
-	setup_wallgui(guipages[1], font, map, &pos, &fieldcenter, &editmode, &hl);
+	setup_mgui(guipages[0], font, draw_w, draw_h, mapname, map);
+	setup_wallgui(guipages[1], font, draw_w, draw_h, map, &pos, &fieldcenter, &editmode, &hl);
 	GUIPage* showgui = NULL;
 	std::vector<GUIPage*> pagehistory;
 	SDL_StopTextInput();
@@ -130,11 +133,10 @@ int main(int argc, char* argv[])
 			1000 / (float) tdiff
 		);
 		text = TTF_RenderText_Solid(font, infostr, (SDL_Color) { 255, 255, 255, 255 });
-		SDL_Rect rect = { 0, 0, text->w, text->h };
-		SDL_BlitSurface(text, NULL, surface, &rect);
+		SDL_BlitSurface(text, NULL, surface, NULL);
 		SDL_FreeSurface(text);
 		// crosshair
-		rect = { (WIDTH - ch->w) / 2, (HEIGHT - ch->h) / 2, ch->w, ch->h };
+		SDL_Rect rect = { (draw_w - ch->w) / 2, (draw_h - ch->h) / 2, ch->w, ch->h };
 		SDL_BlitSurface(ch, NULL, surface, &rect);
 		// gui
 		if (showgui) drawgui(surface, showgui, font, tdiff);
@@ -190,6 +192,13 @@ int main(int argc, char* argv[])
 					opengui(showgui, &guipages[response - 1], pagehistory);
 				break;
 			}
+			case SDL_WINDOWEVENT:
+				surface = SDL_GetWindowSurface(window);
+				draw_w = surface->w, draw_h = surface->h;
+				// re-center all gui pages
+				for (int i = 0; i < NUMPAGES; i++)
+					center_page(guipages[i], { draw_w / 2, draw_h / 2 });
+				break;
 			}
 		}
 		// tick the clock

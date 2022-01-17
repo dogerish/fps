@@ -18,7 +18,11 @@ struct maingui_data {
 GUIThing mapcolumns(std::vector<GUIThing> &guithings, TTF_Font* font, std::string& mapname);
 
 int  mgui_click(TTF_Font* font, GUIPage* page, GUIThing* thing);
-void setup_mgui(GUIPage &mgui, TTF_Font* font, std::string &mapname, Map* map);
+void setup_mgui(
+	GUIPage &mgui,
+	TTF_Font* font, int draw_w, int draw_h,
+	std::string &mapname, Map* map
+);
 
 struct wallgui_data {
 	Map* map;
@@ -35,7 +39,7 @@ int  wallgui_click(TTF_Font* font, GUIPage* page, GUIThing* thing);
 void wallgui_update(TTF_Font* font, GUIPage* page, int dt);
 void wallgui_draw(SDL_Surface* surface, GUIPage* page);
 void setup_wallgui(
-	GUIPage &wallgui, TTF_Font* font, Map* map,
+	GUIPage &wallgui, TTF_Font* font, int draw_w, int draw_h, Map* map,
 	Vec2d<float>* pos, Vec2d<float>* fieldcenter, bool* editmode, Vec2d<int>* hl
 );
 

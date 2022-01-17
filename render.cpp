@@ -16,6 +16,7 @@ void renderfloors(
 	SDL_Surface* floortex, SDL_Surface* ceiltex
 )
 {
+	int draw_w = surface->w, draw_h = surface->h;
 	SDL_LockSurface(surface);
 	Uint32* winpixels = (Uint32*) surface->pixels;
 	Uint32* f = (Uint32*) floortex->pixels, *c = (Uint32*) ceiltex->pixels;
@@ -23,27 +24,27 @@ void renderfloors(
 	int sx, sy;
 	Uint32 color;
 	Uint8 v;
-	for (int y = HEIGHT / 2; y < HEIGHT; y++)
+	for (int y = draw_h / 2; y < draw_h; y++)
 	{
 		// distance to floor horizontally
-		dist = HEIGHT / (SQRT_2 * (y - HEIGHT / 2));
-		stx = dist / WIDTH * (fieldright.x - fieldleft.x);
-		sty = dist / WIDTH * (fieldright.y - fieldleft.y);
+		dist = draw_h / (SQRT_2 * (y - draw_h / 2));
+		stx = dist / draw_w * (fieldright.x - fieldleft.x);
+		sty = dist / draw_w * (fieldright.y - fieldleft.y);
 		// get map coords
 		mpx = pos.x + dist * fieldleft.x;
 		mpy = pos.y + dist * fieldleft.y;
 		v = FOGMOD(dist);
-		for (int x = 0; x < WIDTH; x++)
+		for (int x = 0; x < draw_w; x++)
 		{
 			sx = (int) ((mpx - (int) mpx) * TEXSIZE) & TEXSIZE - 1;
 			sy = (int) ((mpy - (int) mpy) * TEXSIZE) & TEXSIZE - 1;
 			color = c[sy * ceiltex->w + sx];
-			winpixels[(HEIGHT - 1 - y) * WIDTH + x] =
+			winpixels[(draw_h - 1 - y) * draw_w + x] =
 				(color >> 16 & 0xff) * v / 255 << 16 |
 				(color >>  8 & 0xff) * v / 255 <<  8 |
 				(color       & 0xff) * v / 255;
 			color = f[sy * floortex->w + sx];
-			winpixels[y * WIDTH + x] =
+			winpixels[y * draw_w + x] =
 				(color >> 16 & 0xff) * v / 255 << 16 |
 				(color >>  8 & 0xff) * v / 255 <<  8 |
 				(color       & 0xff) * v / 255;
@@ -64,14 +65,15 @@ void renderwalls(
 	SDL_Surface* textures[]
 )
 {
+	int draw_w = surface->w, draw_h = surface->h;
 	// linear stepping since monitor isn't spherical
 	Vec2d<float> step = {
-		(fieldright.x - vel.x) / WIDTH,
-		(fieldright.y - vel.y) / WIDTH,
+		(fieldright.x - vel.x) / draw_w,
+		(fieldright.y - vel.y) / draw_w,
 		1
 	};
 	SDL_Rect src = { 0, 0, 1, TEXSIZE };
-	for (int i = 0; i < WIDTH; i++)
+	for (int i = 0; i < draw_w; i++)
 	{
 		vel.x += step.x; vel.y += step.y;
 		Vec2d<int> tile;
@@ -79,17 +81,17 @@ void renderwalls(
 		// use cosine to get distance perpendicular to viewing plane
 		d.mag *= cos(heading - atan2(vel.y, vel.x));
 		// height to make the column
-		float h = HEIGHT / d.mag; h *= (h >= 0);
-		SDL_Rect r = { i, (int) ((HEIGHT - h) / 2), 1, (int) h };
+		float h = draw_h / d.mag; h *= (h >= 0);
+		SDL_Rect r = { i, (int) ((draw_h - h) / 2), 1, (int) h };
 		// if it is so close that the column is bigger than the screen,
 		// only sample a portion of the texture and paste to full height of screen
-		if (r.h > HEIGHT)
+		if (r.h > draw_h)
 		{
 			// trim proportional to screen clipping area
 			src.y = -r.y * TEXSIZE / (float) r.h;
 			src.h = TEXSIZE - 2 * src.y;
 			if (src.h < 1) { src.y = TEXSIZE / 2; src.h = 1; }
-			r.y = 0; r.h = HEIGHT;
+			r.y = 0; r.h = draw_h;
 		}
 		else { src.y = 0; src.h = TEXSIZE; }
 		// pick the texture, implement fog, and highlight it if needed

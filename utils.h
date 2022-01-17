@@ -13,12 +13,10 @@
 
 #include SDL2_H
 
-#define WIDTH   720
-#define HEIGHT  480
 #define TEXSIZE 128
 #define SQRT_2  1.4142135624f
 
-int init(SDL_Window* &window, SDL_Surface* &surface);
+int init(SDL_Window* &window, SDL_Surface* &surface, const char* title, int w, int h);
 
 void quit(
 	SDL_Surface* textures[], SDL_Surface* floortex, SDL_Surface* ceiltex, SDL_Surface* ch,

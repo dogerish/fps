@@ -68,7 +68,11 @@ int mgui_click(TTF_Font* font, GUIPage* page, GUIThing* thing)
 	return 0;
 }
 
-void setup_mgui(GUIPage &mgui, TTF_Font* font, std::string &mapname, Map* map)
+void setup_mgui(
+	GUIPage &mgui,
+	TTF_Font* font, int draw_w, int draw_h,
+	std::string &mapname, Map* map
+)
 {
 	maingui_data* ptrs = new maingui_data;
 	mgui.userdata = ptrs;
@@ -84,7 +88,7 @@ void setup_mgui(GUIPage &mgui, TTF_Font* font, std::string &mapname, Map* map)
 	ptrs->mapname = &mapname;
 	ptrs->map     = map;
 	mgui.bdr      = mapcolumns(mgui.things, font, mapname);
-	center_page(mgui, { WIDTH / 2, HEIGHT / 2 });
+	center_page(mgui, { draw_w / 2, draw_h / 2 });
 }
 
 // starting index of the wall buttons
@@ -172,7 +176,7 @@ void wallgui_draw(SDL_Surface* surface, GUIPage* page)
 }
 
 void setup_wallgui(
-	GUIPage &wallgui, TTF_Font* font, Map* map,
+	GUIPage &wallgui, TTF_Font* font, int draw_w, int draw_h, Map* map,
 	Vec2d<float>* pos, Vec2d<float>* fieldcenter, bool* editmode, Vec2d<int>* hl
 )
 {
@@ -202,5 +206,5 @@ void setup_wallgui(
 	ptrs->map = map;
 	ptrs->pos = pos; ptrs->fieldcenter = fieldcenter; ptrs->editmode = editmode; ptrs->hl = hl;
 	wallgui.bdr = backdrop(wallgui.things, font, "Wall Editor", 10, 10);
-	center_page(wallgui, { WIDTH / 2, HEIGHT / 2 });
+	center_page(wallgui, { draw_w / 2, draw_h / 2 });
 }

@@ -3,14 +3,14 @@
 #include SDL2_IMG_H
 #include <cstdio>
 
-int init(SDL_Window* &window, SDL_Surface* &surface)
+int init(SDL_Window* &window, SDL_Surface* &surface, const char* title, int w, int h)
 {
 	int err = 0;
 	err |= SDL_Init(SDL_INIT_VIDEO);
 	err |= (window = SDL_CreateWindow(
-			"raycaster",
-			SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WIDTH, HEIGHT,
-			0
+			title,
+			SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h,
+			SDL_WINDOW_RESIZABLE
 		)) == NULL;
 	err |= (surface = SDL_GetWindowSurface(window)) == NULL;
 	if (surface) SDL_SetSurfaceRLE(surface, 1);
