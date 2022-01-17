@@ -4,9 +4,11 @@
 #ifdef __linux__
 #define SDL2_H <SDL2/SDL.h>
 #define SDL2_TTF_H <SDL2/SDL_ttf.h>
+#define SDL2_IMG_H <SDL2/SDL_image.h>
 #else
 #define SDL2_H <SDL.h>
 #define SDL2_TTF_H <SDL_ttf.h>
+#define SDL2_IMG_H <SDL_image.h>
 #endif
 
 #include SDL2_H

@@ -1,5 +1,6 @@
 #include "utils.h"
 #include SDL2_H
+#include SDL2_IMG_H
 #include <cstdio>
 
 int init(SDL_Window* &window, SDL_Surface* &surface)
@@ -31,7 +32,7 @@ void quit(
 
 SDL_Surface* loadwithfmt(const char* file, Uint32 fmt)
 {
-	SDL_Surface* tmp = SDL_LoadBMP(file);
+	SDL_Surface* tmp = IMG_Load(file);
 	if (!tmp) return NULL;
 	SDL_Surface* s = SDL_ConvertSurfaceFormat(tmp, fmt, 0);
 	SDL_FreeSurface(tmp);
@@ -51,15 +52,15 @@ int loadtex(
 	char filename[20];
 	for (int i = 0; i < 15; i++)
 	{
-		sprintf(filename, "textures/%i.bmp", i + 1);
+		sprintf(filename, "textures/%i.png", i + 1);
 		err |= (textures[i] = loadwithfmt(filename, fmt)) == NULL;
 		if (textures[i]) SDL_SetSurfaceRLE(textures[i], 1);
 	}
-	err |= (floortex = loadwithfmt("textures/floor.bmp", fmt))   == NULL;
-	err |= (ceiltex  = loadwithfmt("textures/ceiling.bmp", fmt)) == NULL;
+	err |= (floortex = loadwithfmt("textures/floor.png", fmt))   == NULL;
+	err |= (ceiltex  = loadwithfmt("textures/ceiling.png", fmt)) == NULL;
 	if (floortex) { SDL_SetSurfaceRLE(floortex, 0); SDL_LockSurface(floortex); }
 	if (ceiltex)  { SDL_SetSurfaceRLE(ceiltex,  0); SDL_LockSurface(ceiltex);  }
-	err |= (ch = SDL_LoadBMP("textures/crosshair.bmp")) == NULL;
+	err |= (ch = IMG_Load("textures/crosshair.png")) == NULL;
 	if (ch) SDL_SetSurfaceRLE(ch, 1);
 	return err;
 }

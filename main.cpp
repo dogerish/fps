@@ -7,6 +7,7 @@
 #include "utils.h"
 #include SDL2_H
 #include SDL2_TTF_H
+#include SDL2_IMG_H
 #include "rays.h"
 #include "render.h"
 #include "gui.h"
@@ -16,8 +17,8 @@
 namespace fs = std::filesystem;
 
 #define QUITGAME quit(textures, floortex, ceiltex, ch, window)
-#define ERROR_RETURN(code) \
-	logfile << SDL_GetError() << std::endl; QUITGAME; \
+#define ERROR_RETURN(code, lib) \
+	logfile << lib##_GetError() << std::endl; QUITGAME; \
 	logfile.close(); \
 	return code;
 
@@ -49,11 +50,17 @@ int main(int argc, char* argv[])
 	// initialize stuff
 	SDL_Window*  window = NULL;
 	SDL_Surface* surface = NULL;
-	if (init(window, surface) || TTF_Init()) { ERROR_RETURN(1); }
+	if (init(window, surface)) { ERROR_RETURN(1, SDL); }
+	if (TTF_Init()) { ERROR_RETURN(1, TTF); }
+	if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) { ERROR_RETURN(1, IMG); }
 	Map* map = create_map(25, 25);
 	SDL_SetEventFilter(filter, map);
 	// load textures and map
-	if (loadtex(surface->format->format, textures, floortex, ceiltex, ch)) { ERROR_RETURN(2); }
+	if (loadtex(surface->format->format, textures, floortex, ceiltex, ch))
+	{
+		if (SDL_GetError()[0]) { ERROR_RETURN(1, SDL); }
+		if (IMG_GetError()[0]) { ERROR_RETURN(1, IMG); }
+	}
 	std::string mapname = "maze";
 	if (loadmap(map, mapname, true)) logfile << SDL_GetError() << std::endl;
 	TTF_Font* font = TTF_OpenFont("font.ttf", 14);

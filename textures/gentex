@@ -5,8 +5,8 @@ SAUER_RESOURCE_DIR=/Applications/Sauerbraten.app/Contents/Resources/
 while IFS= read -r line
 do
 	[[ "$line" =~ ^(//.*$|$) ]] && continue
-	bmp=${line%: *}
+	dst=${line%: *}
 	src=${SAUER_RESOURCE_DIR}/packages/textures/${line#*: }
-	echo "$bmp"
-	convert "$src" -scale "$size" "$bmp"
+	echo "$dst"
+	convert "$src" -scale "$size" "$dst"
 done < <(sed 's/^ *//g' locations.txt)

@@ -10,7 +10,7 @@ else
 endif
 
 CXXFLAGS := $(shell ${SDL2_CFG} --cflags) --std=c++2a --debug
-LIBS := $(shell ${SDL2_CFG} --libs) -lSDL2_ttf
+LIBS := $(shell ${SDL2_CFG} --libs) -lSDL2_ttf -lSDL2_image
 
 OBJ := main.o utils.o rays.o render.o gui.o guipage.o maingui.o map.o
 OBJ := $(addprefix $(TDIR)/,$(OBJ))
