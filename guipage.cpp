@@ -59,8 +59,9 @@ int oninput(TTF_Font* font, GUIPage *page, const char* text)
 
 void default_pagedraw(SDL_Surface* surface, GUIPage* page)
 {
-	SDL_BlitSurface(page->bdr.s, NULL, surface, &page->bdr.r);
-	for (GUIThing g : page->things) SDL_BlitSurface(g.s, NULL, surface, &g.r);
+	SDL_Rect copy = page->bdr.r;
+	SDL_BlitSurface(page->bdr.s, NULL, surface, &copy);
+	for (GUIThing g : page->things) SDL_BlitSurface(g.s, NULL, surface, &(copy = g.r));
 }
 void drawgui(SDL_Surface* surface, GUIPage *page, TTF_Font* font, int dt)
 {
