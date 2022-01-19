@@ -77,3 +77,6 @@ Raycaster made by me, algorithms inspired by online sources.
 21. [![video](thumbnails/2022-01-16%20at%2012.38.08.png)](https://streamable.com/x6a758)<br/>
    2022-01-16 at 12.38.08: Map listing, wall editor, new map button
 
+22. [![video](thumbnails/2022-01-19%20at%2016.56.54.png)](https://streamable.com/xiqc60)<br/>
+   22022-01-19 at 16.56.5: Title page and main menu system
+
