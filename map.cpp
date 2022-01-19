@@ -64,12 +64,14 @@ void newmap(Map* map)
 		set_faces(wall_at(map, x, y), 1, 1, 1, 1);
 		wall_at(map, x, y)->clip = !(x % (map->w - 1) && y % (map->h - 1));
 	}
+	map->loaded = 1;
+	map->name = "newmap";
 }
 int loadmap(Map* map, std::string name, bool reset_on_fail)
 {
 	int e = 0, v;
-	name = "maps/" + name;
-	std::ifstream file(name, std::ios::binary);
+	std::string filename = "maps/" + name;
+	std::ifstream file(filename, std::ios::binary);
 	file >> v;
 	if (v < 1 || v > MAPVER && ++e)
 		SDL_SetError("Invalid map version. Expected %i or less, but got %i", MAPVER, v);
@@ -86,11 +88,16 @@ int loadmap(Map* map, std::string name, bool reset_on_fail)
 	}
 	if (!file.good() && ++e)
 	{
-		SDL_SetError("Error while loading '%s'", name.c_str());
+		SDL_SetError("Error while loading '%s'", filename.c_str());
 		// set to default map
 		if (reset_on_fail) newmap(map);
 	}
 	file.close();
+	if (!e)
+	{
+		map->loaded = 1;
+		map->name = name;
+	}
 	return e;
 }
 

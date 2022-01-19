@@ -141,11 +141,17 @@ GUIThing backdrop(
 	COLOR_ARGS(,,)
 )
 {
+	bool hastitle = title && title[0];
 	GUIThing b, t; b.type = GUI_BACKDROP; SET_COLORS(b);
-	if (title) t.s = TTF_RenderText_Shaded(font, title, fg, bg);
+	if (hastitle)
+	{
+		b.value = title;
+		t.s = TTF_RenderText_Shaded(font, title, fg, bg);
+	}
+	else b.value = "";
 	if (!guithings.size())
 	{
-		if (!title) return b;
+		if (!hastitle) return b;
 		b.r = { 0, 0, t.s->w, t.s->h };
 	}
 	else b.r = guithings[0].r;
@@ -159,7 +165,7 @@ GUIThing backdrop(
 	}
 	// make b.r w and h actual width and height values
 	b.r.w -= b.r.x; b.r.h -= b.r.y;
-	if (title)
+	if (hastitle)
 	{
 		t.r.w = t.s->w; t.r.h = t.s->h;
 		// include title if it wasn't already
@@ -183,7 +189,7 @@ GUIThing backdrop(
 	// render this
 	b.s = SDL_CreateRGBSurface(0, b.r.w, b.r.h, 32, 0, 0, 0, 0xff);
 	borderfill(b.s, border, bg);
-	if (title)
+	if (hastitle)
 	{
 		SDL_BlitSurface(t.s, NULL, b.s, &t.r);
 		SDL_FreeSurface(t.s);
@@ -219,21 +225,21 @@ void columnate(
 	std::vector<GUIThing> &guithings,
 	TTF_Font* font,
 	const char* title,
-	std::vector<std::string> &strings,
+	std::vector<std::string> &strings, unsigned int numcols,
 	SDL_Rect r,
 	int marginx, int marginy,
 	SDL_Color outer,
 	COLOR_ARGS(,,)
 )
 {
-	if (title) r = addthing(guithings, textbox(font, "Maps"), ALIGN_CENTER, &r)->r;
+	if (title && title[0]) r = addthing(guithings, textbox(font, "Maps"), ALIGN_CENTER, &r)->r;
 	if (!strings.size()) return;
 	// generate columns
-	int numcols = (strings.size() < 3) ? strings.size() : 3;
+	numcols = (strings.size() < numcols) ? strings.size() : numcols;
 	std::vector<GUIThing> columns[numcols];
 	for (int i = 0; i < strings.size(); i++)
 		addthing(
-			columns[i * numcols / strings.size()],
+			columns[i % numcols],
 			button(font, strings[i].c_str(), 5, 1, border, bg, fg)
 		);
 	// generate backdrops and align them and their contents like ALIGN_TOP

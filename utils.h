@@ -19,6 +19,7 @@
 int init(SDL_Window* &window, SDL_Surface* &surface, const char* title, int w, int h);
 
 void quit(
+	SDL_Surface* titletex,
 	SDL_Surface* textures[], SDL_Surface* floortex, SDL_Surface* ceiltex, SDL_Surface* ch,
 	SDL_Window* window
 );
@@ -29,6 +30,7 @@ SDL_Surface* loadwithfmt(const char* file, Uint32 fmt);
 // load textures; 0 on success
 int loadtex(
 	Uint32 fmt,
+	SDL_Surface* &titletex,
 	SDL_Surface* textures[],
 	SDL_Surface* &floortex,
 	SDL_Surface* &ceiltex,

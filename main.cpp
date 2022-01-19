@@ -16,19 +16,6 @@
 #include "map.h"
 namespace fs = std::filesystem;
 
-#define QUITGAME quit(textures, floortex, ceiltex, ch, window)
-#define ERROR_RETURN(code, lib) \
-	logfile << lib##_GetError() << std::endl; QUITGAME; \
-	logfile.close(); \
-	return code;
-
-SDL_Surface* textures[15];
-SDL_Surface* floortex;
-SDL_Surface* ceiltex;
-SDL_Surface* ch; // crosshair
-std::ofstream logfile("logfile.txt", std::ofstream::out);
-float fov = (M_PI / 2) / 2;
-
 static int SDLCALL filter(void* userdata, SDL_Event* e)
 {
 	switch (e->type)
@@ -45,10 +32,28 @@ static int SDLCALL filter(void* userdata, SDL_Event* e)
 	}
 }
 
+#define QUITGAME quit(titletex, textures, floortex, ceiltex, ch, window)
+#define ERROR_RETURN(code, lib) \
+	logfile << lib##_GetError() << std::endl; QUITGAME; \
+	logfile.close(); \
+	return code;
+
+void blit_centered(SDL_Surface* src, SDL_Surface* dst)
+{
+	SDL_Rect r = { (dst->w - src->w) / 2, (dst->h - src->h) / 2, src->w, src->h };
+	SDL_BlitSurface(src, NULL, dst, &r);
+}
+
 int main(int argc, char* argv[])
 {
 	// go to the app's directory
 	fs::current_path(((fs::path) argv[0]).parent_path());
+	std::ofstream logfile("logfile.txt", std::ofstream::out);
+	SDL_Surface* titletex;
+	SDL_Surface* textures[15];
+	SDL_Surface* floortex;
+	SDL_Surface* ceiltex;
+	SDL_Surface* ch; // crosshair
 	// initialize stuff
 	SDL_Window*  window = NULL;
 	SDL_Surface* surface = NULL;
@@ -59,29 +64,30 @@ int main(int argc, char* argv[])
 	Map* map = create_map(25, 25);
 	SDL_SetEventFilter(filter, map);
 	// load textures and map
-	if (loadtex(surface->format->format, textures, floortex, ceiltex, ch))
+	if (loadtex(surface->format->format, titletex, textures, floortex, ceiltex, ch))
 	{
 		if (SDL_GetError()[0]) { ERROR_RETURN(1, SDL); }
 		if (IMG_GetError()[0]) { ERROR_RETURN(1, IMG); }
 	}
-	std::string mapname = "maze";
-	if (loadmap(map, mapname, true)) logfile << SDL_GetError() << std::endl;
 	TTF_Font* font = TTF_OpenFont("font.ttf", 14);
 	if (font == NULL) { logfile << TTF_GetError() << std::endl; logfile.close(); return 3; }
 	char infostr[64]; SDL_Surface* text;
 	// set up variables for game
 	Vec2d<float> pos = { map->w / 2.f, map->h / 2.f, -1 };
-	float heading = 0;
+	float heading = 0, fov = (M_PI / 2) / 2;
 	// normalized coordinates from leftmost fov to rightmost
 	Vec2d<float> fieldleft, fieldcenter = { 1, 0, 1 }, fieldright;
 	// editing variables
+	int gamemode = GM_TITLESCREEN;
 	bool editmode = false; Vec2d<int> hl = { 0, 0, 0 };
 	// set up gui things
-	const int NUMPAGES = 2;
+	const int NUMPAGES = 4;
 	GUIPage guipages[NUMPAGES];
-	setup_mgui(guipages[0], font, draw_w, draw_h, mapname, map);
-	setup_wallgui(guipages[1], font, draw_w, draw_h, map, &pos, &fieldcenter, &editmode, &hl);
-	GUIPage* showgui = NULL;
+	setup_titlegui(guipages[0], font, draw_w, draw_h, &gamemode, map);
+	setup_mapselgui(guipages[1], font, draw_w, draw_h, &gamemode, map);
+	setup_editgui(guipages[2], font, draw_w, draw_h, map);
+	setup_wallgui(guipages[3], font, draw_w, draw_h, map, &pos, &fieldcenter, &editmode, &hl);
+	GUIPage* showgui = &guipages[0];
 	std::vector<GUIPage*> pagehistory;
 	SDL_StopTextInput();
 	// main loop variables
@@ -91,38 +97,49 @@ int main(int argc, char* argv[])
 	// main loop
 	while (running)
 	{
-		// update player
-		if (!showgui || !showgui->focused)
+		if (gamemode != GM_TITLESCREEN && map->loaded)
 		{
-			// positive or negative depending on what keys are pressed
-			float multiplier = (kb[SDL_SCANCODE_W] - kb[SDL_SCANCODE_S])
-			                   * (float) tdiff / 250.f;
-			Vec2d<float> last = pos;
-			// update position accounting for heading, and then checking collision
-			pos.x += multiplier * fieldcenter.x;
-			if (wall_at(map, floor(pos.x), floor(pos.y))->clip) pos.x = last.x;
-			pos.y += multiplier * fieldcenter.y;
-			if (wall_at(map, floor(pos.x), floor(pos.y))->clip) pos.y = last.y;
-			// turning
-			heading += (kb[SDL_SCANCODE_D] - kb[SDL_SCANCODE_A])
-			           * (float) tdiff / 400.f;
-			// update fov variables
-			fieldleft   = { cos(heading - fov), sin(heading - fov), 1 };
-			fieldcenter = { cos(heading),       sin(heading),       1 };
-			fieldright  = { cos(heading + fov), sin(heading + fov), 1 };
-			// highlight the face under the crosshair
-			if (editmode) raycast(pos, fieldcenter, map, hl);
+			if (editmode && gamemode != GM_EDITING) editmode = false;
+			// update player
+			if (!showgui || !showgui->focused)
+			{
+				// positive or negative depending on what keys are pressed
+				float multiplier = (kb[SDL_SCANCODE_W] - kb[SDL_SCANCODE_S])
+						   * (float) tdiff / 250.f;
+				Vec2d<float> last = pos;
+				// update position and then check collision
+				pos.x += multiplier * fieldcenter.x;
+				if (wall_at(map, floor(pos.x), floor(pos.y))->clip) pos.x = last.x;
+				pos.y += multiplier * fieldcenter.y;
+				if (wall_at(map, floor(pos.x), floor(pos.y))->clip) pos.y = last.y;
+				// turning
+				heading += (kb[SDL_SCANCODE_D] - kb[SDL_SCANCODE_A])
+					   * (float) tdiff / 400.f;
+				// update fov variables
+				fieldleft   = { cos(heading - fov), sin(heading - fov), 1 };
+				fieldcenter = { cos(heading),       sin(heading),       1 };
+				fieldright  = { cos(heading + fov), sin(heading + fov), 1 };
+				// highlight the face under the crosshair
+				if (editmode) raycast(pos, fieldcenter, map, hl);
+			}
+			// render (floor and ceiling) and walls
+			renderfloors(surface, pos, fieldleft, fieldright, floortex, ceiltex);
+			renderwalls(
+				surface,
+				pos, heading, editmode,
+				map,
+				fieldleft, fieldright,
+				hl,
+				textures
+			);
 		}
-		// render (floor and ceiling) and walls
-		renderfloors(surface, pos, fieldleft, fieldright, floortex, ceiltex);
-		renderwalls(
-			surface,
-			pos, heading, editmode,
-			map,
-			fieldleft, fieldright,
-			hl,
-			textures
-		);
+		else
+		{
+			// draw title/home screen
+			SDL_FillRect(surface, NULL, *(Uint32*) titletex->pixels);
+			blit_centered(titletex, surface);
+			if (!showgui) showgui = &guipages[0];
+		}
 		// render info text
 		heading = fmod(heading, 2 * M_PI);
 		heading += (heading < 0) * 2 * M_PI;
@@ -136,8 +153,7 @@ int main(int argc, char* argv[])
 		SDL_BlitSurface(text, NULL, surface, NULL);
 		SDL_FreeSurface(text);
 		// crosshair
-		SDL_Rect rect = { (draw_w - ch->w) / 2, (draw_h - ch->h) / 2, ch->w, ch->h };
-		SDL_BlitSurface(ch, NULL, surface, &rect);
+		if (gamemode != GM_TITLESCREEN && map->loaded) blit_centered(ch, surface);
 		// gui
 		if (showgui) drawgui(surface, showgui, font, tdiff);
 		SDL_UpdateWindowSurface(window);
@@ -154,10 +170,10 @@ int main(int argc, char* argv[])
 				// gui input
 				if (showgui)
 				{
-					int response = onkeypress(font, showgui, keycode);
-					if (response <= 0)
+					int r = onkeypress(font, showgui, keycode);
+					if (r <= 0)
 					{
-						if (response < 0) closegui(showgui, pagehistory);
+						if (r < 0) closegui(showgui, pagehistory);
 						break;
 					}
 				}
@@ -167,9 +183,9 @@ int main(int argc, char* argv[])
 				int oldtex  = facetex;
 				switch (keycode)
 				{
-				case SDLK_e:      editmode = !editmode; break;
-				case SDLK_DOWN:   facetex--; break;
-				case SDLK_UP:     facetex++; break;
+				case SDLK_e: editmode = gamemode == GM_EDITING && !editmode; break;
+				case SDLK_DOWN: facetex--; break;
+				case SDLK_UP:   facetex++; break;
 				case SDLK_ESCAPE:
 					opengui(showgui, &guipages[0], pagehistory);
 					break;
@@ -185,19 +201,22 @@ int main(int argc, char* argv[])
 			case SDL_MOUSEBUTTONDOWN:
 			{
 				if (!showgui) break;
-				int response = onclick(font, showgui, { e.button.x, e.button.y });
-				if (response < 0)
-					closegui(showgui, pagehistory);
-				else if (response > 0 && response - 1 < NUMPAGES)
-					opengui(showgui, &guipages[response - 1], pagehistory);
+				int r = onclick(font, showgui, { e.button.x, e.button.y });
+				// decode response
+				if (!r) break;
+				else if (r > 1 && r - 2 < NUMPAGES)
+					opengui(showgui, &guipages[r - 2], pagehistory);
+				// change gui without writing history
+				else if (r < -1 && -2 - r < NUMPAGES) showgui = &guipages[-2 - r];
+				else if (r == -1) closegui(showgui, pagehistory);
 				break;
 			}
 			case SDL_WINDOWEVENT:
 				surface = SDL_GetWindowSurface(window);
 				draw_w = surface->w, draw_h = surface->h;
 				// re-center all gui pages
-				for (int i = 0; i < NUMPAGES; i++)
-					center_page(guipages[i], { draw_w / 2, draw_h / 2 });
+				for (GUIPage &p : guipages)
+					center_page(p, { draw_w / 2, draw_h / 2 });
 				break;
 			}
 		}
@@ -211,8 +230,9 @@ int main(int argc, char* argv[])
 		for (GUIThing &g : p.things) SDL_FreeSurface(g.s);
 		SDL_FreeSurface(p.bdr.s);
 	}
-	delete (maingui_data*) guipages[0].userdata;
-	delete (wallgui_data*) guipages[1].userdata;
+	delete (titlegui_data*) guipages[0].userdata;
+	delete (editgui_data*)  guipages[1].userdata;
+	delete (wallgui_data*)  guipages[2].userdata;
 	free_map(map);
 	QUITGAME;
 	logfile.close();

@@ -16,6 +16,8 @@ const Wall NULL_WALL = { 1, 1, 1, 1, 1 };
 
 struct Map {
 	int w, h;
+	int loaded = 0;
+	std::string name;
 	Wall* data;
 };
 

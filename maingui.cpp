@@ -9,34 +9,146 @@
 #include "map.h"
 namespace fs = std::filesystem;
 
-// indices for important maingui things
-enum MAINGUI_INDICES { MGN, MGS, MGL, MGW, MGNEW };
+#define GETDATA(type) type* data = (type*) page->userdata
 
-// show available maps, returns new backdrop
-GUIThing mapcolumns(std::vector<GUIThing> &guithings, TTF_Font* font, std::string& mapname)
+void mapcolumns(std::vector<GUIThing> &guithings, TTF_Font* font, int numcols, SDL_Rect ref)
 {
 	std::vector<std::string> entries;
 	for (auto entry : fs::directory_iterator("maps/"))
 		entries.push_back(entry.path().filename().string());
-	SDL_Rect href = guithings.back().r;
 	columnate(
-		guithings, font, "Maps", entries,
-		{ guithings[MGN].r.x, href.y, guithings[MGN].r.w, href.h },
-		5, 5,
-		GRAY(0xff), DGRAY(0xff), GRAY(0xff)
+		guithings, font, "Maps", entries, numcols, ref,
+		5, 5, GRAY(0xff), DGRAY(0xff), GRAY(0xff)
 	);
-	return backdrop(guithings, font, mapname.c_str());
 }
 
-int mgui_click(TTF_Font* font, GUIPage* page, GUIThing* thing)
+enum TITLEGUI_INDICES { TGHOME, TGPLAY, TGEDIT, TGSELMAP, TGEDITMAP, TGSETTINGS, TGEXIT };
+void titlegui_update(TTF_Font* font, GUIPage* page, int dt)
 {
-	maingui_data* data = (maingui_data*) page->userdata;
+	GETDATA(titlegui_data);
+	int gamemode = *((titlegui_data*) page->userdata)->gamemode;
+	page->things[TGHOME].shown = gamemode != GM_TITLESCREEN;
+	page->things[TGPLAY].shown = gamemode != GM_PLAYING;
+	page->things[TGEDIT].shown = gamemode != GM_EDITING;
+	page->things[TGSELMAP].shown  = gamemode != GM_EDITING && gamemode != GM_TITLESCREEN;
+	page->things[TGEDITMAP].shown = gamemode == GM_EDITING;
+}
+int titlegui_click(TTF_Font* font, GUIPage* page, GUIThing* thing)
+{
+	GETDATA(titlegui_data);
+	int i = thing - &page->things[0];
+	switch (i)
+	{
+	case TGHOME: *data->gamemode = GM_TITLESCREEN; return 0;
+	// play / edit
+	case TGPLAY:
+	case TGEDIT:
+		data->map->loaded = *data->gamemode != GM_TITLESCREEN;
+		*data->gamemode = (i == TGPLAY) ? GM_PLAYING : GM_EDITING;
+	case TGSELMAP:   return -2 - 1; // close page and select map
+	case TGEDITMAP:  return  2 + 2; // edit gui
+	case TGSETTINGS: return  2 + 4; // settings
+	case TGEXIT:
+		SDL_Event e; e.type = SDL_QUIT;
+		SDL_PushEvent(&e);
+	default: return 0;
+	}
+}
+void setup_titlegui(
+	GUIPage &titlegui,
+	TTF_Font* font, int draw_w, int draw_h,
+	int* gamemode, Map* map
+)
+{
+	titlegui_data* data = new titlegui_data;
+	titlegui.userdata = data;
+	titlegui.update = titlegui_update;
+	titlegui.button_click = titlegui_click;
+	data->gamemode = gamemode;
+	data->map = map;
+	titlegui.things.reserve(5);
+	SDL_Rect leftref = addthing(titlegui.things, button(font, "Home"))->r;
+	SDL_Rect ref = addthing(titlegui.things, button(font, "Play"), ALIGN_TOP)->r;
+	addthing(titlegui.things, button(font, "Edit"), ALIGN_TOP);
+	addthing(titlegui.things, button(font, "Select Map"), ALIGN_CENTER, &ref);
+	ref = addthing(titlegui.things, button(font, "Edit..."), ALIGN_CENTER, &ref)->r;
+	ref = addthing(titlegui.things, button(font, "Settings"), ALIGN_CENTER, &ref)->r;
+	ref = { leftref.x, ref.y, leftref.w, ref.h };
+	addthing(titlegui.things, button(font, "Exit", 5, 1, RED(0xff)), ALIGN_LEFT, &ref, 15);
+	titlegui.bdr = backdrop(titlegui.things, font, "Main Menu");
+	center_page(titlegui, { draw_w / 2, draw_h / 2 });
+}
+
+void mapselgui_refresh(GUIPage &page, TTF_Font* font)
+{
+	for (GUIThing &g : page.things) if (g.id != 0) SDL_FreeSurface(g.s);
+	if (page.things.size() > 1) page.things.erase(page.things.begin() + 1, page.things.end());
+	mapcolumns(page.things, font, 5, page.things.back().r);
+	SDL_Rect ref = page.things.back().r;
+	if (page.bdr.s) SDL_FreeSurface(page.bdr.s);
+	page.bdr = backdrop(page.things, font, page.bdr.value.c_str());
+}
+int mapselgui_click(TTF_Font* font, GUIPage* page, GUIThing* thing)
+{
+	GETDATA(mapselgui_data);
+	// select map
+	if (thing->id < 0)
+	{
+		loadmap(data->map, thing->value);
+		return -1;
+	}
+	// refresh
+	mapselgui_refresh(*page, font);
+	center_page(*page, { *data->draw_w / 2, *data->draw_h / 2 });
+	return 0;
+}
+int mapselgui_close(GUIPage* page, std::vector<GUIPage*> &history)
+{
+	GETDATA(mapselgui_data);
+	if (!data->map->loaded) *data->gamemode = GM_TITLESCREEN;
+	return 0;
+}
+void setup_mapselgui(
+	GUIPage &page, TTF_Font* font, int &draw_w, int &draw_h,
+	int* gamemode, Map* map
+)
+{
+	mapselgui_data* data = new mapselgui_data;
+	page.userdata = data;
+	data->draw_w = &draw_w;
+	data->draw_h = &draw_h;
+	data->gamemode = gamemode;
+	data->map = map;
+	page.button_click = mapselgui_click;
+	page.page_close = mapselgui_close;
+	GUIThing refresh_button = button(font, "Refresh");
+	refresh_button.id = 0;
+	addthing(page.things, refresh_button);
+	page.bdr.value = "Map Selector";
+	mapselgui_refresh(page, font);
+	center_page(page, { draw_w / 2, draw_h / 2 });
+}
+
+// indices for important maingui things
+enum EDITGUI_INDICES { EGNAME, EGSAVE, EGLOAD, EGWALL, EGNEWMAP };
+// show available maps, returns new backdrop
+GUIThing editgui_listmaps(std::vector<GUIThing> &guithings, TTF_Font* font, std::string& mapname)
+{
+	SDL_Rect ref = guithings.back().r;
+	ref.x = guithings[EGNAME].r.x;
+	ref.w = guithings[EGNAME].r.w;
+	mapcolumns(guithings, font, 3, ref);
+	return backdrop(guithings, font, mapname.c_str());
+}
+int editgui_click(TTF_Font* font, GUIPage* page, GUIThing* thing)
+{
+	GETDATA(editgui_data);
 	int idx = thing - &page->things[0];
 	switch (idx)
 	{
-	case MGW: return 2; // open wall gui
-	case MGS: // save map
-		if (savemap(data->map, page->things[MGN].value)) return 0;
+	case EGWALL: return 2 + 3; // open wall gui
+	case EGSAVE: // save map
+		if (savemap(data->map, page->things[EGNAME].value)) return 0;
 		// update map listing
 		for (int i = page->things.size() - 1; page->things[i].type != GUI_TEXT; i--)
 		{
@@ -46,54 +158,58 @@ int mgui_click(TTF_Font* font, GUIPage* page, GUIThing* thing)
 		SDL_FreeSurface(page->things.back().s);
 		page->things.pop_back();
 		SDL_FreeSurface(page->bdr.s);
-		page->bdr = mapcolumns(page->things, font, *data->mapname);
+		page->bdr = editgui_listmaps(page->things, font, data->map->name);
 		break;
-	case MGL: // load map or new map
-		if (loadmap(data->map, page->things[MGN].value)) return 0;
-	case MGNEW:
-		*data->mapname = (idx == MGNEW) ? "newmap" : page->things[MGN].value;
-		if (idx == MGNEW) newmap(data->map);
-		SDL_FreeSurface(page->bdr.s);
-		page->bdr = backdrop(
-			page->things,
-			font, data->mapname->c_str(),
-			5, 5, page->bdr.border, page->bdr.bg, page->bdr.fg
-		);
+	case EGLOAD: // load map or new map
+		if (loadmap(data->map, page->things[EGNAME].value)) return 0;
+	case EGNEWMAP:
+		data->map->name = (idx == EGNEWMAP) ? "newmap" : page->things[EGNAME].value;
+		if (idx == EGNEWMAP) newmap(data->map);
 		break;
 	default: // select map
-		page->things[MGN].value = thing->value;
-		redrawinput(font, &page->things[MGN], false);
+		page->things[EGNAME].value = thing->value;
+		redrawinput(font, &page->things[EGNAME], false);
 		break;
 	}
 	return 0;
 }
-
-void setup_mgui(
-	GUIPage &mgui,
+void editgui_update(TTF_Font* font, GUIPage* page, int dt)
+{
+	GETDATA(editgui_data);
+	// redraw backdrop if the mapname changed
+	if (page->bdr.value == data->map->name) return;
+	SDL_FreeSurface(page->bdr.s);
+	page->bdr = backdrop(
+		page->things,
+		font, data->map->name.c_str(),
+		5, 5, page->bdr.border, page->bdr.bg, page->bdr.fg
+	);
+}
+void setup_editgui(
+	GUIPage &editgui,
 	TTF_Font* font, int draw_w, int draw_h,
-	std::string &mapname, Map* map
+	Map* map
 )
 {
-	maingui_data* ptrs = new maingui_data;
-	mgui.userdata = ptrs;
-	mgui.button_click = mgui_click;
+	editgui_data* ptrs = new editgui_data;
+	editgui.userdata = ptrs;
+	ptrs->map = map;
+	editgui.button_click = editgui_click;
+	editgui.update = editgui_update;
 	// reserve enough memory so that the pointers remain valid
-	mgui.things.reserve(5);
+	editgui.things.reserve(5);
 	// add things and ste up pointers
-	GUIThing* ref = addthing(mgui.things, inputbox(font, "Map name:", 100));
-	addthing(mgui.things, button(font, "Save"), ALIGN_RIGHT);
-	addthing(mgui.things, button(font, "Load"), ALIGN_LEFT, &ref->r);
-	ref = addthing(mgui.things, button(font, "Wall Editor"), ALIGN_CENTER, &ref->r);
-	addthing(mgui.things, button(font, "New Map"), ALIGN_CENTER, &ref->r);
-	ptrs->mapname = &mapname;
-	ptrs->map     = map;
-	mgui.bdr      = mapcolumns(mgui.things, font, mapname);
-	center_page(mgui, { draw_w / 2, draw_h / 2 });
+	GUIThing* ref = addthing(editgui.things, inputbox(font, "Map name:", 100));
+	addthing(editgui.things, button(font, "Save"), ALIGN_RIGHT);
+	addthing(editgui.things, button(font, "Load"), ALIGN_LEFT, &ref->r);
+	ref = addthing(editgui.things, button(font, "Wall Editor"), ALIGN_CENTER, &ref->r);
+	addthing(editgui.things, button(font, "New Map"), ALIGN_CENTER, &ref->r);
+	editgui.bdr = editgui_listmaps(editgui.things, font, map->name);
+	center_page(editgui, { draw_w / 2, draw_h / 2 });
 }
 
 // starting index of the wall buttons
 #define WGS 0
-
 void wallbutton_update(GUIThing* g)
 {
 	Uint8 v = 0xff - g->overflown * 0x80;
@@ -104,10 +220,9 @@ void wallbutton_update(GUIThing* g, int overflown)
 	g->overflown = overflown;
 	wallbutton_update(g);
 }
-
 int wallgui_click(TTF_Font* font, GUIPage* page, GUIThing* thing)
 {
-	wallgui_data* data = (wallgui_data*) page->userdata;
+	GETDATA(wallgui_data);
 	int i = thing - &page->things[WGS];
 	// refresh buttons
 	if (thing == &page->things.back())
@@ -121,7 +236,6 @@ int wallgui_click(TTF_Font* font, GUIPage* page, GUIThing* thing)
 	wallbutton_update(thing);
 	return 0;
 }
-
 void wallgui_update(TTF_Font* font, GUIPage* page, int dt)
 {
 	wallgui_data* data = (wallgui_data*) page->userdata;
@@ -139,7 +253,7 @@ void wallgui_draw(SDL_Surface* surface, GUIPage* page)
 {
 	default_pagedraw(surface, page);
 	// draw player
-	wallgui_data* data = (wallgui_data*) page->userdata;
+	GETDATA(wallgui_data);
 	Uint32 color = SDL_MapRGBA(surface->format, 0xd0, 0, 0xff, 0xd0);
 	SDL_Rect r = { (int) (data->pos->x * 10), (int) (data->pos->y * 10), 7, 7 };
 	r.x += page->things[WGS].r.x;
@@ -174,7 +288,6 @@ void wallgui_draw(SDL_Surface* surface, GUIPage* page)
 	r.x -= r.w / 2; r.y -= r.w / 2;
 	SDL_FillRect(surface, &r, color);
 }
-
 void setup_wallgui(
 	GUIPage &wallgui, TTF_Font* font, int draw_w, int draw_h, Map* map,
 	Vec2d<float>* pos, Vec2d<float>* fieldcenter, bool* editmode, Vec2d<int>* hl

@@ -24,7 +24,7 @@ $(TDIR): ; mkdir $(TDIR)
 $(wordlist 2,$(words $(OBJ)),$(OBJ)): $(TDIR)/%.o : %.cpp %.h
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-$(TDIR)/main.o: main.cpp render.h gui.h guipage.h map.h
+$(TDIR)/main.o: main.cpp render.h gui.h guipage.h map.h maingui.h
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 $(TDIR)/guipage.o: gui.h
 

@@ -31,11 +31,13 @@ enum GUIType {
 
 struct GUIThing {
 	int type;
+	int id = -1;
 	SDL_Rect r;
 	SDL_Rect textarea;
-	SDL_Surface* s;
+	SDL_Surface* s = NULL;
 	std::string value;
 	int overflown;
+	bool shown = true;
 	SDL_Color border;
 	SDL_Color bg;
 	SDL_Color fg;
@@ -98,7 +100,7 @@ void columnate(
 	std::vector<GUIThing> &guithings,
 	TTF_Font* font,
 	const char* title,
-	std::vector<std::string> &strings,
+	std::vector<std::string> &strings, unsigned int numcols,
 	SDL_Rect alignto,
 	int marginx = 5, int marginy = 5,
 	SDL_Color outer = GRAY(0xff),

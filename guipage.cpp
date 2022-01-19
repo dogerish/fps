@@ -24,7 +24,7 @@ int onclick(TTF_Font* font, GUIPage* page, SDL_Point mouse)
 	if (!SDL_PointInRect(&mouse, &page->bdr.r)) return -1;
 	for (GUIThing &g : page->things)
 	{
-		if (!SDL_PointInRect(&mouse, &g.r)) continue;
+		if (!g.shown || !SDL_PointInRect(&mouse, &g.r)) continue;
 		if      (g.type == GUI_INPUT)  page->focused = startinput(font, &g);
 		else if (g.type == GUI_BUTTON) return page->button_click(font, page, &g);
 		else continue;
@@ -61,7 +61,8 @@ void default_pagedraw(SDL_Surface* surface, GUIPage* page)
 {
 	SDL_Rect copy = page->bdr.r;
 	SDL_BlitSurface(page->bdr.s, NULL, surface, &copy);
-	for (GUIThing g : page->things) SDL_BlitSurface(g.s, NULL, surface, &(copy = g.r));
+	for (GUIThing g : page->things)
+		if (g.shown) SDL_BlitSurface(g.s, NULL, surface, &(copy = g.r));
 }
 void drawgui(SDL_Surface* surface, GUIPage *page, TTF_Font* font, int dt)
 {
@@ -70,11 +71,13 @@ void drawgui(SDL_Surface* surface, GUIPage *page, TTF_Font* font, int dt)
 	else default_pagedraw(surface, page);
 }
 
-void closegui(GUIPage* &current, std::vector<GUIPage*> &history)
+int closegui(GUIPage* &current, std::vector<GUIPage*> &history)
 {
-	if (!history.size()) { current = NULL; return; }
+	if (current->page_close && current->page_close(current, history)) return -1;
+	if (!history.size()) { current = NULL; return 0; }
 	current = history.back();
 	history.pop_back();
+	return 0;
 }
 void opengui(GUIPage* &current, GUIPage* page, std::vector<GUIPage*> &history)
 {
