@@ -71,7 +71,6 @@ int main(int argc, char* argv[])
 	}
 	TTF_Font* font = TTF_OpenFont("font.ttf", 14);
 	if (font == NULL) { logfile << TTF_GetError() << std::endl; logfile.close(); return 3; }
-	char infostr[64]; SDL_Surface* text;
 	// set up variables for game
 	Vec2d<float> pos = { map->w / 2.f, map->h / 2.f, -1 };
 	float heading = 0, fov = (M_PI / 2) / 2;
@@ -91,7 +90,8 @@ int main(int argc, char* argv[])
 	std::vector<GUIPage*> pagehistory;
 	SDL_StopTextInput();
 	// main loop variables
-	Uint32 lasttick = SDL_GetTicks(), tdiff = 0;
+	Uint32 lasttick = SDL_GetTicks(), tdiff = 0, lastfpstick = 0;
+	float fps = 0; int fpsdelay = 100; int framecount = 0;
 	const Uint8* kb = SDL_GetKeyboardState(NULL);
 	bool running = true;
 	// main loop
@@ -140,22 +140,11 @@ int main(int argc, char* argv[])
 			blit_centered(titletex, surface);
 			if (!showgui) showgui = &guipages[0];
 		}
-		// render info text
-		heading = fmod(heading, 2 * M_PI);
-		heading += (heading < 0) * 2 * M_PI;
-		sprintf(
-			infostr,
-			"%i deg | %4.1f fps",
-			(int) (heading * 180 / M_PI),
-			1000 / (float) tdiff
-		);
-		text = TTF_RenderText_Solid(font, infostr, (SDL_Color) { 255, 255, 255, 255 });
-		SDL_BlitSurface(text, NULL, surface, NULL);
-		SDL_FreeSurface(text);
 		// crosshair
 		if (gamemode != GM_TITLESCREEN && map->loaded) blit_centered(ch, surface);
 		// gui
 		if (showgui) drawgui(surface, showgui, font, tdiff);
+		drawfps(surface, font, fps);
 		SDL_UpdateWindowSurface(window);
 
 		// process events
@@ -223,7 +212,15 @@ int main(int argc, char* argv[])
 		// tick the clock
 		tdiff = (SDL_GetTicks() - lasttick);
 		lasttick = SDL_GetTicks();
+		framecount++;
+		if (lasttick >= lastfpstick + fpsdelay)
+		{
+			fps = framecount * 1000.f / (lasttick - lastfpstick);
+			lastfpstick = lasttick;
+			framecount = 0;
+		}
 	}
+
 	TTF_CloseFont(font);
 	for (GUIPage &p : guipages)
 	{

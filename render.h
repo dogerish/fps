@@ -3,7 +3,10 @@
 #include "utils.h"
 #include "rays.h"
 #include SDL2_H
+#include SDL2_TTF_H
 #include "map.h"
+
+void drawfps(SDL_Surface* surface, TTF_Font* font, float fps);
 
 void renderfloors(
 	SDL_Surface* surface,

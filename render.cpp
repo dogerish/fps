@@ -2,12 +2,27 @@
 #include <cmath>
 #include "utils.h"
 #include SDL2_H
+#include SDL2_TTF_H
 #include "rays.h"
 #include "map.h"
 
 #define MAXDIST 30.f
 // value to use for color mod to give fog
 #define FOGMOD(dist) (0xff - 0xef * dist / MAXDIST)
+
+void drawfps(SDL_Surface* surface, TTF_Font* font, float fps)
+{
+	char infostr[6 + (int) fps / 10];
+	// render info text
+	sprintf(infostr, "%.1f fps", fps);
+	int orig = TTF_GetFontStyle(font);
+	TTF_SetFontStyle(font, TTF_STYLE_BOLD);
+	SDL_Surface* text = TTF_RenderText_Solid(font, infostr, { 255, 255, 255, 255 });
+	TTF_SetFontStyle(font, orig);
+	SDL_Rect r = { surface->w - text->w - 5, surface->h - text->h - 5, text->w, text->h };
+	SDL_BlitSurface(text, NULL, surface, &r);
+	SDL_FreeSurface(text);
+}
 
 void renderfloors(
 	SDL_Surface* surface,
