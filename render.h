@@ -17,7 +17,7 @@ void renderfloors(
 
 void renderwalls(
 	SDL_Surface* surface,
-	Vec2d<float> pos, float heading,
+	Vec2d<float> pos,
 	bool editmode,
 	Map* map,
 	Vec2d<float> vel /*fieldleft*/, Vec2d<float> fieldright,

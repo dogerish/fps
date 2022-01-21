@@ -17,43 +17,43 @@ GUIThing* stopinput(TTF_Font* font, GUIThing* focused)
 	return NULL;
 }
 
-int onclick(TTF_Font* font, GUIPage* page, SDL_Point mouse)
+int onclick(GUIPage* page, SDL_Point mouse)
 {
-	if (page->focused) page->focused = stopinput(font, page->focused);
+	if (page->focused) page->focused = stopinput(page->font, page->focused);
 	// close if click happened outside of backdrop
 	if (!SDL_PointInRect(&mouse, &page->bdr.r)) return -1;
 	for (GUIThing &g : page->things)
 	{
 		if (!g.shown || !SDL_PointInRect(&mouse, &g.r)) continue;
-		if      (g.type == GUI_INPUT)  page->focused = startinput(font, &g);
-		else if (g.type == GUI_BUTTON) return page->button_click(font, page, &g);
+		if      (g.type == GUI_INPUT)  page->focused = startinput(page->font, &g);
+		else if (g.type == GUI_BUTTON) return page->button_click(page, &g);
 		else continue;
 		break;
 	}
 	return 0;
 }
 
-int onkeypress(TTF_Font* font, GUIPage *page, SDL_Keycode key)
+int onkeypress(GUIPage *page, SDL_Keycode key)
 {
 	if (!page->focused) return 1 - (key == SDLK_ESCAPE) * 2;
 	switch (key)
 	{
 	case SDLK_ESCAPE:
-	case SDLK_RETURN: page->focused = stopinput(font, page->focused); break;
+	case SDLK_RETURN: page->focused = stopinput(page->font, page->focused); break;
 	case SDLK_BACKSPACE:
 		if (!page->focused->value.size()) break;
 		if (!page->focused->overflown) page->focused->value.pop_back();
-		redrawinput(font, page->focused);
+		redrawinput(page->font, page->focused);
 		break;
 	}
 	return 0;
 }
 
-int oninput(TTF_Font* font, GUIPage *page, const char* text)
+int oninput(GUIPage *page, const char* text)
 {
 	if (!page->focused || page->focused->overflown) return 1;
 	page->focused->value += text;
-	redrawinput(font, page->focused);
+	redrawinput(page->font, page->focused);
 	return 0;
 }
 
@@ -64,9 +64,9 @@ void default_pagedraw(SDL_Surface* surface, GUIPage* page)
 	for (GUIThing g : page->things)
 		if (g.shown) SDL_BlitSurface(g.s, NULL, surface, &(copy = g.r));
 }
-void drawgui(SDL_Surface* surface, GUIPage *page, TTF_Font* font, int dt)
+void drawgui(SDL_Surface* surface, GUIPage *page, int dt)
 {
-	if (page->update) page->update(font, page, dt);
+	if (page->update) page->update(page, dt);
 	if (page->draw) page->draw(surface, page);
 	else default_pagedraw(surface, page);
 }

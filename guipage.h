@@ -5,18 +5,24 @@
 #include SDL2_TTF_H
 #include "gui.h"
 #include <vector>
+#include "game.h"
 
 struct GUIPage {
 	int id;
 	GUIThing bdr;
 	std::vector<GUIThing> things;
 	GUIThing* focused = NULL;
+	TTF_Font* font;
+	GameData* gd;
 	void* userdata = NULL;
-	// return 0 normally, or 1 + index of gui to open, or -1 to close
-	int (*button_click)(TTF_Font* font, GUIPage* page, GUIThing* thing);
+
+	// see return code for onclick()
+	int (*button_click)(GUIPage* page, GUIThing* thing);
 	// return non-zero if the page shouldn't close
 	int (*page_close)(GUIPage* page, std::vector<GUIPage*> &history) = NULL;
-	void (*update)(TTF_Font* font, GUIPage* page, int dt) = NULL;
+	// update the page
+	void (*update)(GUIPage* page, int dt) = NULL;
+	// draw page to surface
 	void (*draw)(SDL_Surface* surface, GUIPage* page) = NULL;
 };
 
@@ -30,14 +36,14 @@ GUIThing* stopinput(TTF_Font* font, GUIThing* focused);
 	 1    : undefined
 	 2 + i: open gui index <i>, restore this page when that gui is closed
 */
-int onclick(TTF_Font* font, GUIPage* page, SDL_Point mouse);
+int onclick(GUIPage* page, SDL_Point mouse);
 // returns 0 normally, 1 if the input should still be processed, and -1 if the page should close
-int onkeypress(TTF_Font* font, GUIPage *page, SDL_Keycode key);
+int onkeypress(GUIPage *page, SDL_Keycode key);
 // returns 0 normally, 1 if the text was ignored because of overflow or no focus
-int oninput(TTF_Font* font, GUIPage *page, const char* text);
+int oninput(GUIPage *page, const char* text);
 
 void default_pagedraw(SDL_Surface* surface, GUIPage* page);
-void drawgui(SDL_Surface* surface, GUIPage *page, TTF_Font* font, int dt);
+void drawgui(SDL_Surface* surface, GUIPage *page, int dt);
 
 // returns -1 if the page wasn't closed. normal return 0
 int  closegui(GUIPage* &current, std::vector<GUIPage*> &history);

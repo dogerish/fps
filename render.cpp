@@ -72,7 +72,7 @@ void renderfloors(
 
 void renderwalls(
 	SDL_Surface* surface,
-	Vec2d<float> pos, float heading,
+	Vec2d<float> pos,
 	bool editmode,
 	Map* map,
 	Vec2d<float> vel /*fieldleft*/, Vec2d<float> fieldright,
@@ -94,7 +94,7 @@ void renderwalls(
 		Vec2d<int> tile;
 		Vec2d<float> d = raycast(pos, vel, map, tile);
 		// use cosine to get distance perpendicular to viewing plane
-		d.mag *= cos(heading - atan2(vel.y, vel.x));
+		d.mag *= cos(pos.mag - atan2(vel.y, vel.x));
 		// height to make the column
 		float h = draw_h / d.mag; h *= (h >= 0);
 		SDL_Rect r = { i, (int) ((draw_h - h) / 2), 1, (int) h };

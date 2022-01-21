@@ -12,7 +12,7 @@ endif
 CXXFLAGS := $(shell ${SDL2_CFG} --cflags) --std=c++2a --debug
 LIBS := $(shell ${SDL2_CFG} --libs) -lSDL2_ttf -lSDL2_image
 
-OBJ := main.o utils.o rays.o render.o gui.o guipage.o maingui.o map.o
+OBJ := main.o utils.o rays.o render.o gui.o guipage.o maingui.o map.o game.o
 OBJ := $(addprefix $(TDIR)/,$(OBJ))
 
 TARGET=game$(EXT)
@@ -24,13 +24,14 @@ $(TDIR): ; mkdir $(TDIR)
 $(wordlist 2,$(words $(OBJ)),$(OBJ)): $(TDIR)/%.o : %.cpp %.h
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-$(TDIR)/main.o: main.cpp render.h gui.h guipage.h map.h maingui.h
+$(TDIR)/main.o: main.cpp render.h gui.h guipage.h map.h maingui.h game.h
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 $(TDIR)/guipage.o: gui.h
 
 $(filter-out $(TDIR)/utils.o,$(OBJ)): utils.h
-$(addprefix $(TDIR)/,main.o render.o): rays.h
+$(addprefix $(TDIR)/,main.o render.o game.o): rays.h
 $(addprefix $(TDIR)/,rays.o maingui.o render.o): map.h
+$(addprefix $(TDIR)/,guipage.o maingui.o): game.h
 
 .PHONY: redo clean
 redo: clean $(TARGET)
