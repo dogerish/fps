@@ -39,7 +39,14 @@ GUIThing* stopinput(TTF_Font* font, GUIThing* focused);
 int onclick(GUIPage* page, SDL_Point mouse);
 // returns 0 normally, 1 if the input should still be processed, and -1 if the page should close
 int onkeypress(GUIPage *page, SDL_Keycode key);
-// returns 0 normally, 1 if the text was ignored because of overflow or no focus
+
+// true for characters 0-9, '.', and '-'
+bool isnumerical(char c);
+/* return code:
+	-1: input was ignored because the character isn't allowed
+	 0: normal
+	 1: input was ignored because of overflow or no focused input box
+*/
 int oninput(GUIPage *page, const char* text);
 
 void default_pagedraw(SDL_Surface* surface, GUIPage* page);

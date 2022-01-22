@@ -14,6 +14,7 @@ GUIThing* stopinput(TTF_Font* font, GUIThing* focused)
 {
 	SDL_StopTextInput();
 	redrawinput(font, focused, false);
+	focused->overflown = 0;
 	return NULL;
 }
 
@@ -41,20 +42,30 @@ int onkeypress(GUIPage *page, SDL_Keycode key)
 	case SDLK_ESCAPE:
 	case SDLK_RETURN: page->focused = stopinput(page->font, page->focused); break;
 	case SDLK_BACKSPACE:
-		if (!page->focused->value.size()) break;
-		if (!page->focused->overflown) page->focused->value.pop_back();
+		if (!page->focused->overflown && page->focused->value.size())
+			page->focused->value.pop_back();
+		page->focused->overflown = 0;
 		redrawinput(page->font, page->focused);
 		break;
 	}
 	return 0;
 }
 
+bool isnumerical(char c) { return c >= '0' && c <= '9' || c == '.' || c == '-'; }
 int oninput(GUIPage *page, const char* text)
 {
-	if (!page->focused || page->focused->overflown) return 1;
-	page->focused->value += text;
+	if (!page->focused || page->focused->overflown & 1) return 1;
+	page->focused->overflown &= ~2;
+	int r = 0;
+	// if this is a number input box, only accept numerical characters
+	if (page->focused->subtype == GUIST_NUMINPUT && !isnumerical(*text))
+	{
+		page->focused->overflown |= 2;
+		r = -1;
+	}
+	else page->focused->value += text;
 	redrawinput(page->font, page->focused);
-	return 0;
+	return r;
 }
 
 void default_pagedraw(SDL_Surface* surface, GUIPage* page)

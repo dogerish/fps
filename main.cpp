@@ -86,7 +86,7 @@ int main(int argc, char* argv[])
 	setup_mapselgui(PASS_SETUP_ARGS(1));
 	setup_editgui  (PASS_SETUP_ARGS(2));
 	setup_wallgui  (PASS_SETUP_ARGS(3));
-	GUIPage* showgui = &guipages[0];
+	GUIPage* showgui = &guipages[2];
 	std::vector<GUIPage*> pagehistory;
 	SDL_StopTextInput();
 	// main loop variables

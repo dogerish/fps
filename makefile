@@ -24,14 +24,15 @@ $(TDIR): ; mkdir $(TDIR)
 $(wordlist 2,$(words $(OBJ)),$(OBJ)): $(TDIR)/%.o : %.cpp %.h
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-$(TDIR)/main.o: main.cpp render.h gui.h guipage.h map.h maingui.h game.h
+$(TDIR)/main.o: main.cpp render.h maingui.h
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
-$(TDIR)/guipage.o: gui.h
 
 $(filter-out $(TDIR)/utils.o,$(OBJ)): utils.h
 $(addprefix $(TDIR)/,main.o render.o game.o): rays.h
-$(addprefix $(TDIR)/,rays.o maingui.o render.o): map.h
-$(addprefix $(TDIR)/,guipage.o maingui.o): game.h
+$(addprefix $(TDIR)/,main.o guipage.o maingui.o): gui.h
+$(addprefix $(TDIR)/,main.o maingui.o): guipage.h
+$(addprefix $(TDIR)/,main.o rays.o maingui.o render.o game.o): map.h
+$(addprefix $(TDIR)/,main.o guipage.o maingui.o): game.h
 
 .PHONY: redo clean
 redo: clean $(TARGET)

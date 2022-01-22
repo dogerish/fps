@@ -28,15 +28,20 @@ enum GUIType {
 	GUI_INPUT,
 	GUI_BACKDROP
 };
+enum GUISubType {
+	GUIST_DEFAULT,
+	GUIST_NUMINPUT
+};
 
 struct GUIThing {
-	int type;
+	GUIType    type;
+	GUISubType subtype = GUIST_DEFAULT;
 	int id = -1;
 	SDL_Rect r;
 	SDL_Rect textarea;
 	SDL_Surface* s = NULL;
 	std::string value;
-	int overflown;
+	int overflown = 0;
 	bool shown = true;
 	SDL_Color border;
 	SDL_Color bg;
@@ -61,6 +66,13 @@ GUIThing button(
 GUIThing button(int w, int h, DEFAULT_COLOR_ARGS);
 
 GUIThing inputbox(
+	TTF_Font* font,
+	const char* label,
+	int w,
+	SDL_Color outer = GRAY(0xff),
+	DEFAULT_COLOR_ARGS
+);
+GUIThing numinputbox(
 	TTF_Font* font,
 	const char* label,
 	int w,
