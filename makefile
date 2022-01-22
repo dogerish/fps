@@ -28,7 +28,7 @@ $(TDIR)/main.o: main.cpp render.h maingui.h
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 $(filter-out $(TDIR)/utils.o,$(OBJ)): utils.h
-$(addprefix $(TDIR)/,main.o render.o game.o): rays.h
+$(addprefix $(TDIR)/,main.o render.o game.o map.o): rays.h
 $(addprefix $(TDIR)/,main.o guipage.o maingui.o): gui.h
 $(addprefix $(TDIR)/,main.o maingui.o): guipage.h
 $(addprefix $(TDIR)/,main.o rays.o maingui.o render.o game.o): map.h

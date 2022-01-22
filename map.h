@@ -1,8 +1,9 @@
 #ifndef RCMAP
 #define RCMAP
+#include "utils.h"
 #include <string>
 
-#define MAPVER 2
+#define MAPVER 3
 
 struct Wall {
 	unsigned int n:4;
@@ -16,6 +17,7 @@ const Wall NULL_WALL = { 1, 1, 1, 1, 1 };
 
 struct Map {
 	int w, h;
+	Vec2d<float> spawn;
 	int loaded = 0;
 	std::string name;
 	Wall* data;
@@ -32,9 +34,9 @@ int face_at(Wall* wall, int face, int value);
 // sets all the faces at once
 void set_faces(Wall* wall, int s, int e, int n, int w);
 
-void newmap(Map* map);
+void newmap(Map* map, Vec2d<float> &pos);
 // returns nonzero on failure; error in SDL_GetError()
-int loadmap(Map* map, std::string name, bool reset_on_fail = false);
+int loadmap(Map* map, Vec2d<float> &pos, std::string name, bool reset_on_fail = false);
 int savemap(Map* map, std::string name);
 
 #endif

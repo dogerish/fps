@@ -11,10 +11,30 @@
 #define SDL2_IMG_H <SDL_image.h>
 #endif
 
+#include <cmath>
+#include <string>
+#include <sstream>
 #include SDL2_H
 
 #define TEXSIZE 128
 #define SQRT_2  1.4142135624f
+
+template<typename T> struct Vec2d
+{
+	T x;
+	T y;
+	T mag = -1;
+	operator std::string()
+	{
+		std::stringstream ss;
+		ss << "(" << this->x << ", " << this->y << ")";
+		return ss.str();
+	}
+	inline bool operator== (const Vec2d<T> &other)
+	{ return other.x == this->x && other.y == this->y && other.mag == this->mag; }
+};
+
+#define MAG(vec) vec.mag = hypot(vec.x, vec.y)
 
 int init(SDL_Window* &window, SDL_Surface* &surface, const char* title, int w, int h);
 

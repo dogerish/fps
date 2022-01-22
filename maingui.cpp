@@ -86,7 +86,7 @@ int mapselgui_click(GUIPage* page, GUIThing* thing)
 	// select map
 	if (thing->id < 0)
 	{
-		loadmap(page->gd->map, thing->value);
+		loadmap(page->gd->map, page->gd->pos, thing->value);
 		return -1;
 	}
 	// refresh
@@ -146,12 +146,10 @@ int editgui_click(GUIPage* page, GUIThing* thing)
 		SDL_FreeSurface(page->bdr.s);
 		page->bdr = editgui_listmaps(page->things, page->font, page->gd->map->name);
 		break;
-	case EGLOAD: // load map or new map
-		if (loadmap(page->gd->map, page->things[EGNAME].value)) return 0;
-	case EGNEWMAP:
-		page->gd->map->name = (idx == EGNEWMAP) ? "newmap" : page->things[EGNAME].value;
-		if (idx == EGNEWMAP) newmap(page->gd->map);
-		break;
+	// load map
+	case EGLOAD: loadmap(page->gd->map, page->gd->pos, page->things[EGNAME].value); break;
+	// new map
+	case EGNEWMAP: newmap(page->gd->map, page->gd->pos); break;
 	default: // select map
 		page->things[EGNAME].value = thing->value;
 		redrawinput(page->font, &page->things[EGNAME], false);
