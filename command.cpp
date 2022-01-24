@@ -1,49 +1,58 @@
 #include "command.h"
-#include <cstring>
+#include <vector>
+#include <string>
 
-char* argcpy(const char* argstart, int len)
+const char* parser_errmsg(int error)
 {
-	char* arg = new char[len + 1];
-	strncpy(arg, argstart, len);
-	arg[len] = '\0';
-	return arg;
+	switch (error)
+	{
+	case PARSER_FINE:            return "";
+	case PARSER_UNKNOWN_COMMAND: return "Unknown command";
+	case PARSER_UNMATCHED_QUOTE: return "Unmatched quote";
+	default:                     return "Unknown error";
+	}
 }
 
-int runcommand(int cmdc, const Command cmdv[], const char* cmdstr)
+int runcommand(const std::vector<Command> &cmdv, const std::string &cmdstr, int &error)
 {
-	int argc = 0;
-	const char** argv = new const char*[MAXARGS];
-
-	const char* argstart = NULL;
-	const char* c = cmdstr;
-	for (; *c && argc < MAXARGS; c++)
+	error = PARSER_FINE;
+	if (!cmdstr.size()) return error;
+	int argc = -1;
+	std::vector<std::string> argv;
+	if (cmdstr[0] != ' ')
+	{
+		argc++;
+		argv.push_back("");
+	}
+	for (std::string::const_iterator c = cmdstr.begin(); c != cmdstr.end(); c++)
 	{
 		switch (*c)
 		{
 		case ' ':
-			if (!argstart) for (; *(c + 1) == ' '; c++);
-			// found end of argument - copy it
-			else argv[argc++] = argcpy(argstart, c - argstart);
-			// set start of an argument if the next character is not \0 and not a space
-			argstart = (*(c + 1) && *(c + 1) != ' ') ? c + 1 : NULL;
+			for (; c + 1 != cmdstr.end() && *(c + 1) == ' '; c++);
+			if (c + 1 != cmdstr.end())
+			{
+				argc++;
+				argv.push_back("");
+			}
+			break;
+		case '\\':
+			if (c + 1 != cmdstr.end()) argv[argc] += *++c;
+			break;
+		case '"':
+			// read until next unescaped quote or end of string
+			while (++c != cmdstr.end() && *c != '"')
+			{
+				if (*c == '\\' && c + 1 != cmdstr.end()) argv[argc] += *++c;
+				else argv[argc] += *c;
+			}
+			if (c == cmdstr.end()) return error = PARSER_UNMATCHED_QUOTE;
 			break;
 		default:
-			if (!argstart) argstart = c;
+			argv[argc] += *c;
 			break;
 		}
 	}
-	// last argument ended with end of string - copy it
-	if (argstart && argc < MAXARGS) argv[argc++] = argcpy(argstart, c - argstart);
-	int r = -1;
-	for (int i = 0; i < cmdc; i++)
-	{
-		if (strcmp(argv[0], cmdv[i].name) == 0)
-		{
-			r = cmdv[i].call(argc, argv);
-			break;
-		}
-	}
-	for (int i = 0; i < argc; i++) delete[] argv[i];
-	delete[] argv;
-	return r;
+	for (const Command &cmd : cmdv) if (argv[0] == cmd.name) return cmd.call(argv);
+	return error = PARSER_UNKNOWN_COMMAND;
 }
