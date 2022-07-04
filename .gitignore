@@ -1,6 +1,6 @@
 *.swp
 Session.vim
-*.o
+/build
 .DS_Store
 logfile.txt
 recordings/*.mov

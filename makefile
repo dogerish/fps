@@ -1,39 +1,49 @@
+SOURCEDIR  = src
+SOURCES    = $(wildcard $(SOURCEDIR)/*.cpp)
+INCLUDEDIR = include
+BUILDDIR   = build
+OBJECTS    = $(patsubst $(SOURCEDIR)/%.cpp,$(BUILDDIR)/%.o,$(SOURCES))
+OS         = native
+ARCH       = native
+EXECUTABLE = game
+SDL2CFG    = sdl2-config
+
+# cross compilation for windows
 ifdef CROSS
-	CXX:=$(CROSS)-w64-mingw32-g++
-	SDL2_CFG:=/usr/local/cross-tools/$(CROSS)-w64-mingw32/bin/sdl2-config
-	TDIR:=win-$(CROSS)
-	EXT:=-$(CROSS).exe
-else
-	CXX=g++
-	SDL2_CFG=sdl2-config
-	TDIR=.
+	CXX     = $(CROSS)-w64-mingw32-g++
+	SDL2CFG = /usr/local/cross-tools/$(CROSS)-w64-mingw32/bin/sdl2-config
+	OS      = windows
+	ARCH    = $(CROSS)
 endif
 
-CXXFLAGS := $(shell ${SDL2_CFG} --cflags) --std=c++2a --debug
-LIBS := $(shell ${SDL2_CFG} --libs) -lSDL2_ttf -lSDL2_image
+EXECUTABLE   := $(BUILDDIR)/$(OS)/$(ARCH)/$(EXECUTABLE)
+EXECUTABLEDIR = $(dir $(EXECUTABLE))
 
-OBJ := main.o utils.o rays.o render.o gui.o guipage.o maingui.o map.o game.o command.o
-OBJ := $(addprefix $(TDIR)/,$(OBJ))
+# -M flags for autogenerating makefile dependencies
+CXXFLAGS = $(shell $(SDL2CFG) --cflags) -I$(INCLUDEDIR) \
+           -MMD -MF $(@:%.o=%.d) -MT $@ \
+           --std=c++2a
+LDFLAGS  = $(shell $(SDL2CFG) --libs) -lSDL2_ttf -lSDL2_image
 
-TARGET=game$(EXT)
-$(TARGET): $(TDIR) $(OBJ)
-	$(CXX) $(CXXFLAGS) $(OBJ) $(LIBS) -o $@ #-lstdc++fs
+.PHONY: all
+all: $(EXECUTABLEDIR) $(EXECUTABLE)
+run: $(EXECUTABLEDIR) $(EXECUTABLE)
+	exec $(EXECUTABLE)
 
-$(TDIR): ; mkdir $(TDIR)
+$(EXECUTABLEDIR):
+	mkdir -p $(EXECUTABLEDIR)
 
-$(wordlist 2,$(words $(OBJ)),$(OBJ)): $(TDIR)/%.o : %.cpp %.h
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
+$(EXECUTABLE): $(OBJECTS)
+	$(CXX) $(LDFLAGS) $^ -o $@ #-lstdc++fs
 
-$(TDIR)/main.o: main.cpp render.h maingui.h
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
+$(BUILDDIR)/%.o: $(SOURCEDIR)/%.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(filter-out $(TDIR)/utils.o,$(OBJ)): utils.h
-$(addprefix $(TDIR)/,main.o render.o game.o map.o): rays.h
-$(addprefix $(TDIR)/,main.o guipage.o maingui.o): gui.h
-$(addprefix $(TDIR)/,main.o maingui.o): guipage.h
-$(addprefix $(TDIR)/,main.o rays.o maingui.o render.o game.o): map.h
-$(addprefix $(TDIR)/,main.o guipage.o maingui.o): game.h
+-include $(OBJECTS:%.o=%.d)
 
-.PHONY: redo clean
-redo: clean $(TARGET)
-clean: ; rm $(OBJ) 2> /dev/null || true
+.PHONY: redo clean deepclean
+redo: clean $(EXECUTABLE)
+clean:
+	rm -f $(OBJECTS) $(OBJECTS:%.o=%.d)
+deepclean:
+	rm -rf $(BUILDDIR)
