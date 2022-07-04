@@ -10,7 +10,7 @@ date: "%Y-%m-%d %H:%M" }}</span>
 
 {% if update.image %}
 ![{{ update.image.alt }}]({{ "/assets/" | append: update.image.src | 
-relative_path }})
+relative_url }})
 {% endif %}
 
 {% if update.video_id %}
