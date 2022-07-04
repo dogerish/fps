@@ -1,0 +1,9 @@
+title: fps raycaster
+description: >-
+  Blog about progress on the raycaster dubbed "fps" (very creative, I know). 
+  Eventually this may also include documentation.
+baseurl: "fps"
+url: "https://dogerish.github.io"
+github_username: dogerish
+
+theme: minima

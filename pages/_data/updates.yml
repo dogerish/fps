@@ -1,0 +1,72 @@
+- timestamp: 2021-12-21T11:29:36EST
+  caption: Single ray is stopping at the right time.
+  video_id: 1bni67
+- timestamp: 2021-12-21T13:36:45EST
+  caption: Multiple rays cast at once in a 2D environment.
+  video_id: 8rzq6w
+- timestamp: 2021-12-21T15:13:59EST
+  caption: Mapping to columns to simulate 3D is working, but the fish eye fix is not
+  video_id: zj4k5w
+- timestamp: 2021-12-23T09:28:56EST
+  caption: Fisheye is fixed but now there's a problem with slight angles going through walls.
+  video_id: jn3lz4
+- timestamp: 2021-12-23T11:55:53EST
+  caption: Wall glitch fixed.
+  video_id: n2d3hd
+- timestamp: 2021-12-23T17:08:09EST
+  caption: Face shading added
+  video_id: l4rvg9
+- timestamp: 2021-12-24T11:03:21EST
+  caption: Movement and turning is improved, and face shading supports more than 2 sides.
+  video_id: sly426
+- timestamp: 2021-12-24T12:20:30EST
+  caption: Tried adding a sky and ground
+  video_id: hoj2i8
+- timestamp: 2021-12-24T13:39:04EST
+  caption: Added collisions
+  video_id: gi91iv
+- timestamp: 2021-12-24T17:02:29EST
+  caption: Added single color textures
+  image:
+    alt: failed textures
+    src: "badtextures.png"
+  video_id: tvulao
+- timestamp: 2021-12-24T17:28:25EST
+  caption: Textures are working
+  image:
+    alt: textures with fog
+    src: "fogtextures.png"
+  youtube_id: v8TDuYdmmj4
+- timestamp: 2021-12-26T16:22:01EST
+  caption: Added floor and ceiling, but now it's very slow.
+  video_id: r5fnpo
+- timestamp: 2021-12-26T19:18:28EST
+  caption: Optimized the floors and ceiling
+  video_id: uyyh0k
+- timestamp: 2021-12-28T10:39:13EST
+  caption: Added display of heading and fps
+  video_id: j6oz31
+- timestamp: 2021-12-28T12:50:11EST
+  caption: Refactored to use surfaces (CPU-based rendering). Much more efficient for this ray caster.
+  video_id: fznbon
+- timestamp: 2021-12-28T14:41:30EST
+  caption: Sort of fixed the bug with close walls being glitched
+  video_id: 1js8uo
+- timestamp: 2021-12-29T13:05:33EST
+  caption: Added texture editing
+  video_id: otvhna
+- timestamp: 2021-12-31T14:38:47EST
+  caption: Game running on Windows! *Video by J-Toastie*
+  video_id: ffg9u2
+- timestamp: 2022-01-03T16:42:25EST
+  caption: Added some GUI stuff and input boxes
+  video_id: 55nhaf
+- timestamp: 2022-01-05T21:20:41EST
+  caption: Fleshed out GUI system
+  video_id: epsh6q
+- timestamp: 2022-01-16T12:38:08EST
+  caption: Map listing, wall editor, new map button
+  video_id: x6a758
+- timestamp: 22022-01-19T16:56:5EST
+  caption: Title page and main menu system
+  video_id: xiqc60

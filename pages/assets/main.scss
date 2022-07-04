@@ -1,0 +1,21 @@
+---
+---
+
+@import "minima";
+
+.progress-report {
+	padding-bottom: 5px;
+	margin-bottom: 40px;
+	border-bottom: 1px solid black;
+}
+
+.progress-date {
+	font-size: 11pt;
+	padding-left: 10px;
+	color: gray;
+}
+
+video {
+	max-height: 240px;
+	max-width: 320px;
+}
