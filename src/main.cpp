@@ -47,7 +47,7 @@ void blit_centered(SDL_Surface* src, SDL_Surface* dst)
 
 const char* USAGE = "raycaster [-Rresource_directory]\n";
 
-int main(int argc, char* const argv[])
+int main(int argc, char* argv[])
 {
 	// parse command line options
 	GameData gd;

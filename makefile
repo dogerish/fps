@@ -10,10 +10,11 @@ SDL2CFG    = sdl2-config
 
 # cross compilation for windows
 ifdef CROSS
-	CXX     = $(CROSS)-w64-mingw32-g++
-	SDL2CFG = /usr/local/cross-tools/$(CROSS)-w64-mingw32/bin/sdl2-config
-	OS      = windows
-	ARCH    = $(CROSS)
+	CXX         = $(CROSS)-w64-mingw32-g++
+	SDL2CFG     = /usr/local/cross-tools/$(CROSS)-w64-mingw32/bin/sdl2-config
+	OS          = windows
+	ARCH        = $(CROSS)
+	EXECUTABLE := $(EXECUTABLE).exe
 endif
 
 EXECUTABLE   := $(BUILDDIR)/$(OS)/$(ARCH)/$(EXECUTABLE)
@@ -34,7 +35,7 @@ $(EXECUTABLEDIR):
 	mkdir -p $(EXECUTABLEDIR)
 
 $(EXECUTABLE): $(OBJECTS)
-	$(CXX) $(LDFLAGS) $^ -o $@ #-lstdc++fs
+	$(CXX) $^ $(LDFLAGS) -o $@ #-lstdc++fs
 
 $(BUILDDIR)/%.o: $(SOURCEDIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
