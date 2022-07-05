@@ -1,0 +1,54 @@
+#! /bin/bash
+# make a release for the target OS and architecture; creates RELEASEZIP
+
+AUTOGEN_EXTENSION=.autogen.bash
+
+function add_includes()
+{
+	echo Checking for $1 includes
+	target=${RELEASEINCLUDE}/$1
+	# make sure directory exists and isn't empty
+	[[ -d ${target} && -n "$(ls -A ${target})" ]] || return 1
+	echo ' -> Adding includes'
+	# save the full path to the release zip for access from other directories
+	rz="$(realpath ${RELEASEZIP})"
+	# generate the includes in a temporary directory to support autogeneration
+	tempdir=$(mktemp -d)
+	cd ${target} > /dev/null
+	while read f
+	do
+		# make directory in tempdir if it is one
+		[[ -d ${f} ]] && mkdir -p ${tempdir}/${f} && continue
+		# autogenerate if needed
+		if [[ ${f} =~ .+"$AUTOGEN_EXTENSION" ]]
+		then
+			out=${f%%$AUTOGEN_EXTENSION}
+			echo ' --> Generating' ${out}
+			bash ${f} > ${tempdir}/${out} || exit 2
+			continue
+		fi
+		# make a hard link to it in the tempdir (faster than copying)
+		ln ${f} ${tempdir}/${f}
+	done < <(find * -not -name '.*')
+	cd - > /dev/null
+	# go to tempdir and add the members to the zip
+	cd ${tempdir} > /dev/null
+	zip -q "${rz}" -r *
+	cd - > /dev/null
+	rm -r ${tempdir}
+}
+
+echo Removing old release
+rm -f ${RELEASEZIP}
+
+echo Adding executable
+zip -q ${RELEASEZIP} --junk-paths $EXECUTABLE
+echo Adding resources
+zip -q ${RELEASEZIP} -r resources
+add_includes all
+add_includes ${OS}/all
+add_includes ${OS}/${ARCH}
+
+echo Done
+# print contents
+unzip -l ${RELEASEZIP}

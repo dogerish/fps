@@ -1,12 +1,12 @@
-SOURCEDIR  = src
-SOURCES    = $(wildcard $(SOURCEDIR)/*.cpp)
-INCLUDEDIR = include
-BUILDDIR   = build
-OBJECTS    = $(patsubst $(SOURCEDIR)/%.cpp,$(BUILDDIR)/%.o,$(SOURCES))
-OS         = native
-ARCH       = native
-EXECUTABLE = game
-SDL2CFG    = sdl2-config
+SOURCEDIR       = src
+INCLUDEDIR      = include
+BUILDDIR        = build
+RELEASEDIR      = releases
+RELEASEINCLUDE  = release-include
+OS             ?= $(shell uname -s)
+ARCH           ?= $(shell uname -m)
+EXECUTABLE      = game
+SDL2CFG         = sdl2-config
 
 # cross compilation for windows
 ifdef CROSS
@@ -17,8 +17,18 @@ ifdef CROSS
 	EXECUTABLE := $(EXECUTABLE).exe
 endif
 
-EXECUTABLE   := $(BUILDDIR)/$(OS)/$(ARCH)/$(EXECUTABLE)
-EXECUTABLEDIR = $(dir $(EXECUTABLE))
+OS          := $(shell tr '[:upper:]' '[:lower:]' <<< $(OS))
+BUILDDIR    := $(BUILDDIR)/$(OS)/$(ARCH)
+EXECUTABLE  := $(BUILDDIR)/$(EXECUTABLE)
+RELEASEZIP  := $(RELEASEDIR)/$(OS)_$(ARCH).zip
+# release zip depends on all the directories it would include
+RELEASEDEPS := $(shell find $(RELEASEINCLUDE)/all \
+                            $(RELEASEINCLUDE)/$(OS)/all \
+                            $(RELEASEINCLUDE)/$(OS)/$(ARCH) \
+                            -type d -not -name '.*' 2>/dev/null)
+
+SOURCES = $(wildcard $(SOURCEDIR)/*.cpp)
+OBJECTS = $(patsubst $(SOURCEDIR)/%.cpp,$(BUILDDIR)/%.o,$(SOURCES))
 
 # -M flags for autogenerating makefile dependencies
 CXXFLAGS = $(shell $(SDL2CFG) --cflags) -I$(INCLUDEDIR) \
@@ -26,15 +36,23 @@ CXXFLAGS = $(shell $(SDL2CFG) --cflags) -I$(INCLUDEDIR) \
            --std=c++2a
 LDFLAGS  = $(shell $(SDL2CFG) --libs) -lSDL2_ttf -lSDL2_image
 
-.PHONY: all
-all: $(EXECUTABLEDIR) $(EXECUTABLE)
-run: $(EXECUTABLEDIR) $(EXECUTABLE)
+.PHONY: all run release
+all run: $(EXECUTABLE)
+run:
 	exec $(EXECUTABLE)
+release: $(RELEASEZIP)
+unrelease:
+	rm -f $(RELEASEZIP)
+rerelease: unrelease release
 
-$(EXECUTABLEDIR):
-	mkdir -p $(EXECUTABLEDIR)
+$(RELEASEZIP): $(EXECUTABLE) $(RELEASEDEPS) | $(RELEASEDIR)
+	$(eval export RELEASEDIR RELEASEINCLUDE RELEASEZIP CROSS OS ARCH EXECUTABLE)
+	./make-release
 
-$(EXECUTABLE): $(OBJECTS)
+$(BUILDDIR) $(RELEASEDIR):
+	mkdir -p $@
+
+$(EXECUTABLE): $(OBJECTS) | $(BUILDDIR)
 	$(CXX) $^ $(LDFLAGS) -o $@ #-lstdc++fs
 
 $(BUILDDIR)/%.o: $(SOURCEDIR)/%.cpp
@@ -42,9 +60,10 @@ $(BUILDDIR)/%.o: $(SOURCEDIR)/%.cpp
 
 -include $(OBJECTS:%.o=%.d)
 
-.PHONY: redo clean deepclean
-redo: clean $(EXECUTABLE)
+.PHONY: clean deepclean purge
 clean:
 	rm -f $(OBJECTS) $(OBJECTS:%.o=%.d)
 deepclean:
 	rm -rf $(BUILDDIR)
+purge:
+	rm -rf build/
