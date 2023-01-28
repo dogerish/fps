@@ -85,6 +85,7 @@ int CommandHandler::parse(const std::string &cmdstr, std::vector<std::string> &a
 				{
 					switch (*c)
 					{
+						// allow nesting
 					case '[': nest++; break;
 					case ']': nest--; break;
 					case '\\':
@@ -93,7 +94,6 @@ int CommandHandler::parse(const std::string &cmdstr, std::vector<std::string> &a
 					}
 					// end loop on closing bracket without adding it
 					if (!nest) break;
-					// add character
 					argv[argc] += *c;
 				}
 				if (c == cmdstr.end()) return error = UNEXPECTED_END;
