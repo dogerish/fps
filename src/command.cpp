@@ -2,18 +2,45 @@
 #include <vector>
 #include <string>
 
-const char* parser_errmsg(int error)
+
+int CommandHandler::parseint(const std::string &str)
+{ return std::stoi(str); }
+
+int CommandHandler::parseint(const std::string &str, const int default_value)
+{
+	try { return parseint(str); }
+	catch (std::invalid_argument const &e) { return default_value; }
+	catch (std::out_of_range     const &e) { return default_value; }
+}
+
+float CommandHandler::parsefloat(const std::string &str)
+{ return std::stof(str); }
+
+float CommandHandler::parsefloat(const std::string &str, const float default_value)
+{
+	try { return parsefloat(str); }
+	catch (std::invalid_argument const &e) { return default_value; }
+	catch (std::out_of_range     const &e) { return default_value; }
+}
+
+CommandHandler::CommandHandler(std::vector<Command> cmdv)
+{
+	this->cmdv = cmdv;
+}
+
+const char* CommandHandler::geterror()
 {
 	switch (error)
 	{
-	case PARSER_FINE:            return "";
-	case PARSER_UNKNOWN_COMMAND: return "Unknown command";
-	case PARSER_UNMATCHED_QUOTE: return "Unmatched quote";
-	default:                     return "Unknown error";
+	case NO_ERROR:        return "";
+	case UNKNOWN_COMMAND: return "Unknown command";
+	case UNEXPECTED_END:  return "Unexpected end of line";
+	case UNEXPECTED_CHAR: return "Unexpected character";
+	default:              return "Unknown error";
 	}
 }
 
-int parsecommand(const std::string &cmdstr, std::vector<std::string> &argv)
+int CommandHandler::parse(const std::string &cmdstr, std::vector<std::string> &argv)
 {
 	int argc = -1;
 	// if it doesn't start with whitespace, initialize first argument
@@ -48,45 +75,49 @@ int parsecommand(const std::string &cmdstr, std::vector<std::string> &argv)
 				if (*c == '\\' && c + 1 != cmdstr.end()) argv[argc] += *++c;
 				else argv[argc] += *c;
 			}
-			if (c == cmdstr.end()) return PARSER_UNMATCHED_QUOTE;
+			if (c == cmdstr.end()) return error = UNEXPECTED_END;
 			break;
+		case '[':
+			{
+				// read until matching bracket
+				int nest = 1;
+				while (++c != cmdstr.end())
+				{
+					switch (*c)
+					{
+					case '[': nest++; break;
+					case ']': nest--; break;
+					case '\\':
+						  if (c + 1 != cmdstr.end()) c++;
+						  break;
+					}
+					// end loop on closing bracket without adding it
+					if (!nest) break;
+					// add character
+					argv[argc] += *c;
+				}
+				if (c == cmdstr.end()) return error = UNEXPECTED_END;
+			}
+			break;
+		case ']':
+			return error = UNEXPECTED_CHAR;
 		default:
 			// append character to current argument
 			argv[argc] += *c;
 			break;
 		}
 	}
-	return PARSER_FINE;
+	return error = NO_ERROR;
 }
 
-int runcommand(const std::vector<Command> &cmdv, const std::string &cmdstr)
+int CommandHandler::run(const std::string &cmdstr)
 {
-	int error = PARSER_FINE;
-	if (!cmdstr.size()) return error;
+	if (!cmdstr.size()) return 0;
 	// get argv and check for error
 	std::vector<std::string> argv;
-	if (error = parsecommand(cmdstr, argv)) return error;
+	if (error = parse(cmdstr, argv)) return -1;
 	// find and call command
 	for (const Command &cmd : cmdv) if (argv[0] == cmd.name) return cmd.call(argv);
-	return error = PARSER_UNKNOWN_COMMAND;
-}
-
-int parseint(const std::string &str)
-{ return std::stoi(str); }
-
-int parseint(const std::string &str, const int default_value)
-{
-	try { return parseint(str); }
-	catch (std::invalid_argument const &e) { return default_value; }
-	catch (std::out_of_range     const &e) { return default_value; }
-}
-
-float parsefloat(const std::string &str)
-{ return std::stof(str); }
-
-float parsefloat(const std::string &str, const float default_value)
-{
-	try { return parsefloat(str); }
-	catch (std::invalid_argument const &e) { return default_value; }
-	catch (std::out_of_range     const &e) { return default_value; }
+	error = UNKNOWN_COMMAND;
+	return -1;
 }
