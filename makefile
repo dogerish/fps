@@ -5,6 +5,7 @@ RELEASEDIR      = releases
 RELEASEINCLUDE  = release-include
 OS             ?= $(shell uname -s)
 ARCH           ?= $(shell uname -m)
+DEBUGGER       ?= lldb
 EXECUTABLE      = game
 SDL2CFG         = sdl2-config
 
@@ -33,13 +34,13 @@ OBJECTS = $(patsubst $(SOURCEDIR)/%.cpp,$(BUILDDIR)/%.o,$(SOURCES))
 # -M flags for autogenerating makefile dependencies
 CXXFLAGS = $(shell $(SDL2CFG) --cflags) -I$(INCLUDEDIR) \
            -MMD -MF $(@:%.o=%.d) -MT $@ \
-           --std=c++2a
+           --std=c++2a $(if $(value DEBUG),-g,)
 LDFLAGS  = $(shell $(SDL2CFG) --libs) -lSDL2_ttf -lSDL2_image
 
 .PHONY: all run release
 all run: $(EXECUTABLE)
 run:
-	exec $(EXECUTABLE)
+	$(if $(value DEBUG),$(DEBUGGER),exec) $(EXECUTABLE)
 release: $(RELEASEZIP)
 unrelease:
 	rm -f $(RELEASEZIP)
