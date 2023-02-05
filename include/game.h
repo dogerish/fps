@@ -17,6 +17,7 @@ struct GameData {
 	std::string resource_path = "resources";
 	Vec2d<float> pos;
 	float fov;
+	float fps;
 	// normalized coordinates from leftmost fov to rightmost
 	Vec2d<float> fieldleft, fieldcenter, fieldright;
 	int gamemode;

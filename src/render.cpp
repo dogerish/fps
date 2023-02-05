@@ -6,35 +6,31 @@
 #include <SDL_ttf.h>
 #include "rays.h"
 #include "map.h"
+#include "game.h"
 
 #define MAXDIST 30.f
 // value to use for color mod to give fog
 #define FOGMOD(dist) (0xff - 0xef * dist / MAXDIST)
 
-void drawfps(SDL_Surface* surface, TTF_Font* font, float fps)
+void drawfps(GameData& gd)
 {
-	char infostr[6 + (int) fps / 10];
+	char infostr[6 + (int) gd.fps / 10];
 	// render info text
-	sprintf(infostr, "%.1f fps", fps);
-	int orig = TTF_GetFontStyle(font);
-	TTF_SetFontStyle(font, TTF_STYLE_BOLD);
-	SDL_Surface* text = TTF_RenderText_Solid(font, infostr, { 255, 255, 255, 255 });
-	TTF_SetFontStyle(font, orig);
-	SDL_Rect r = { surface->w - text->w - 5, surface->h - text->h - 5, text->w, text->h };
-	SDL_BlitSurface(text, NULL, surface, &r);
+	sprintf(infostr, "%.1f fps", gd.fps);
+	int orig = TTF_GetFontStyle(gd.font);
+	TTF_SetFontStyle(gd.font, TTF_STYLE_BOLD);
+	SDL_Surface* text = TTF_RenderText_Solid(gd.font, infostr, { 255, 255, 255, 255 });
+	TTF_SetFontStyle(gd.font, orig);
+	SDL_Rect r = { gd.surface->w - text->w - 5, gd.surface->h - text->h - 5, text->w, text->h };
+	SDL_BlitSurface(text, NULL, gd.surface, &r);
 	SDL_FreeSurface(text);
 }
 
-void renderfloors(
-	SDL_Surface* surface,
-	Vec2d<float> pos,
-	Vec2d<float> fieldleft, Vec2d<float> fieldright,
-	SDL_Surface* floortex, SDL_Surface* ceiltex
-)
+void renderfloors(GameData& gd, SDL_Surface* floortex, SDL_Surface* ceiltex)
 {
-	int draw_w = surface->w, draw_h = surface->h;
-	SDL_LockSurface(surface);
-	Uint32* winpixels = (Uint32*) surface->pixels;
+	int draw_w = gd.surface->w, draw_h = gd.surface->h;
+	SDL_LockSurface(gd.surface);
+	Uint32* winpixels = (Uint32*) gd.surface->pixels;
 	Uint32* f = (Uint32*) floortex->pixels, *c = (Uint32*) ceiltex->pixels;
 	float dist, stx, sty, mpx, mpy;
 	int sx, sy;
@@ -44,11 +40,11 @@ void renderfloors(
 	{
 		// distance to floor horizontally
 		dist = draw_h / (SQRT_2 * (y - draw_h / 2));
-		stx = dist / draw_w * (fieldright.x - fieldleft.x);
-		sty = dist / draw_w * (fieldright.y - fieldleft.y);
+		stx = dist / draw_w * (gd.fieldright.x - gd.fieldleft.x);
+		sty = dist / draw_w * (gd.fieldright.y - gd.fieldleft.y);
 		// get map coords
-		mpx = pos.x + dist * fieldleft.x;
-		mpy = pos.y + dist * fieldleft.y;
+		mpx = gd.pos.x + dist * gd.fieldleft.x;
+		mpy = gd.pos.y + dist * gd.fieldleft.y;
 		v = FOGMOD(dist);
 		for (int x = 0; x < draw_w; x++)
 		{
@@ -68,24 +64,17 @@ void renderfloors(
 			mpx += stx; mpy += sty;
 		}
 	}
-	SDL_UnlockSurface(surface);
+	SDL_UnlockSurface(gd.surface);
 }
 
-void renderwalls(
-	SDL_Surface* surface,
-	Vec2d<float> pos,
-	bool editmode,
-	Map* map,
-	Vec2d<float> vel /*fieldleft*/, Vec2d<float> fieldright,
-	Vec2d<int> hl,
-	SDL_Surface* textures[]
-)
+void renderwalls(GameData& gd, SDL_Surface* textures[])
 {
-	int draw_w = surface->w, draw_h = surface->h;
+	int draw_w = gd.surface->w, draw_h = gd.surface->h;
 	// linear stepping since monitor isn't spherical
+	Vec2d<float> vel = gd.fieldleft;
 	Vec2d<float> step = {
-		(fieldright.x - vel.x) / draw_w,
-		(fieldright.y - vel.y) / draw_w,
+		(gd.fieldright.x - vel.x) / draw_w,
+		(gd.fieldright.y - vel.y) / draw_w,
 		1
 	};
 	SDL_Rect src = { 0, 0, 1, TEXSIZE };
@@ -93,9 +82,9 @@ void renderwalls(
 	{
 		vel.x += step.x; vel.y += step.y;
 		Vec2d<int> tile;
-		Vec2d<float> d = raycast(pos, vel, map, tile);
+		Vec2d<float> d = raycast(gd.pos, vel, gd.map, tile);
 		// use cosine to get distance perpendicular to viewing plane
-		d.mag *= cos(pos.mag - atan2(vel.y, vel.x));
+		d.mag *= cos(gd.pos.mag - atan2(vel.y, vel.x));
 		// height to make the column
 		float h = draw_h / d.mag; h *= (h >= 0);
 		SDL_Rect r = { i, (int) ((draw_h - h) / 2), 1, (int) h };
@@ -111,13 +100,12 @@ void renderwalls(
 		}
 		else { src.y = 0; src.h = TEXSIZE; }
 		// pick the texture, implement fog, and highlight it if needed
-		SDL_Surface* t = textures[face_at(wall_at(map, tile.x, tile.y), tile.mag) - 1];
+		SDL_Surface* t = textures[face_at(wall_at(gd.map, tile.x, tile.y), tile.mag) - 1];
 		Uint8 v = FOGMOD(d.mag);
-		SDL_SetSurfaceColorMod(t, v, v * !(editmode && tile == hl), v);
+		SDL_SetSurfaceColorMod(t, v, v * !(gd.editmode && tile == gd.hl), v);
 		// sample at the right x location of the texture
-		src.x = ((tile.mag % 2) ?  pos.x + d.x - tile.x : pos.y + d.y - tile.y) * TEXSIZE;
+		src.x = ((tile.mag % 2) ?  gd.pos.x + d.x - tile.x : gd.pos.y + d.y - tile.y) * TEXSIZE;
 		// scale and paste the slice on the screen
-		SDL_BlitScaled(t, &src, surface, &r);
+		SDL_BlitScaled(t, &src, gd.surface, &r);
 	}
 }
-

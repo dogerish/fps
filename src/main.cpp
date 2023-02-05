@@ -33,7 +33,7 @@ static int SDLCALL filter(void* userdata, SDL_Event* e)
 	}
 }
 
-#define QUITGAME quit(tex, gd.window)
+#define QUITGAME quit(gd, tex)
 #define ERROR_RETURN(code, lib) \
 	logfile << lib##_GetError() << std::endl; QUITGAME; \
 	logfile.close(); \
@@ -68,12 +68,12 @@ int main(int argc, char* argv[])
 
 	std::ofstream logfile("logfile.txt", std::ofstream::out);
 	// initialize stuff
-	if (init(gd.window, gd.surface, "WalkerPonk 2069", 720, 480)) { ERROR_RETURN(1, SDL); }
+	if (init(gd, "WalkerPonk 2069", 720, 480)) { ERROR_RETURN(1, SDL); }
 	if (TTF_Init()) { ERROR_RETURN(1, TTF); }
 	if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) { ERROR_RETURN(1, IMG); }
 	SDL_SetEventFilter(filter, NULL);
 	// load textures and map
-	if (loadtex(gd.surface->format->format, tex, gd.resource_path))
+	if (loadtex(gd, gd.surface->format->format, tex))
 	{
 		if (SDL_GetError()[0]) { ERROR_RETURN(1, SDL); }
 		if (IMG_GetError()[0]) { ERROR_RETURN(1, IMG); }
@@ -98,7 +98,7 @@ int main(int argc, char* argv[])
 	SDL_StopTextInput();
 	// main loop variables
 	Uint32 lasttick = SDL_GetTicks(), tdiff = 0, lastfpstick = 0;
-	float fps = 0; int fpsdelay = 100, framecount = 0;
+	int fpsdelay = 100, framecount = 0;
 	const Uint8* kb = SDL_GetKeyboardState(NULL);
 	bool running = true;
 	// main loop
@@ -132,20 +132,8 @@ int main(int argc, char* argv[])
 			// highlight the face under the crosshair
 			if (gd.editmode) raycast(gd.pos, gd.fieldcenter, gd.map, gd.hl);
 			// render (floor and ceiling) and walls
-			renderfloors(
-				gd.surface,
-				gd.pos,
-				gd.fieldleft, gd.fieldright,
-				tex.floor, tex.ceiling
-			);
-			renderwalls(
-				gd.surface,
-				gd.pos, gd.editmode,
-				gd.map,
-				gd.fieldleft, gd.fieldright,
-				gd.hl,
-				tex.wall
-			);
+			renderfloors(gd, tex.floor, tex.ceiling);
+			renderwalls(gd, tex.wall);
 		}
 		else
 		{
@@ -159,7 +147,7 @@ int main(int argc, char* argv[])
 			blit_centered(tex.crosshair, gd.surface);
 		// gui
 		if (gd.page >= 0) guipages[gd.page]->drawgui(gd, tdiff);
-		drawfps(gd.surface, gd.font, fps);
+		drawfps(gd);
 		SDL_UpdateWindowSurface(gd.window);
 
 		// process events
@@ -230,7 +218,7 @@ int main(int argc, char* argv[])
 		framecount++;
 		if (lasttick >= lastfpstick + fpsdelay)
 		{
-			fps = framecount * 1000.f / (lasttick - lastfpstick);
+			gd.fps = framecount * 1000.f / (lasttick - lastfpstick);
 			lastfpstick = lasttick;
 			framecount = 0;
 		}
