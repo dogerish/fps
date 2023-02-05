@@ -2,8 +2,9 @@
 #include <SDL.h>
 #include <SDL_ttf.h>
 #include <vector>
+#include "game.h"
 
-void borderfill(SDL_Surface* surface, SDL_Color border, SDL_Color bg)
+void borderfill(GameData& gd, SDL_Surface* surface, SDL_Color border, SDL_Color bg)
 {
 	Uint32* pixels = (Uint32*) surface->pixels;
 	Uint32 b = SDL_MapRGBA(surface->format, border.r, border.g, border.b, border.a),
@@ -19,20 +20,20 @@ void borderfill(SDL_Surface* surface, SDL_Color border, SDL_Color bg)
 #define SET_COLORS(thing) thing.border = border; thing.bg = bg; thing.fg = fg
 
 GUIThing textbox(
-	TTF_Font* font,
+	GameData& gd,
 	const char* text,
 	SDL_Color bg,
 	SDL_Color fg
 )
 {
 	GUIThing g; g.bg = bg; g.fg = fg; g.type = GUI_TEXT;
-	g.s = TTF_RenderText_Shaded(font, text, fg, bg);
+	g.s = TTF_RenderText_Shaded(gd.font, text, fg, bg);
 	g.r = { 0, 0, g.s->w, g.s->h };
 	return g;
 }
 
 GUIThing button(
-	TTF_Font* font,
+	GameData& gd,
 	const char* label,
 	int marginx, int marginy,
 	COLOR_ARGS(,,)
@@ -40,7 +41,7 @@ GUIThing button(
 {
 	GUIThing g; g.type = GUI_BUTTON; SET_COLORS(g);
 	g.value = label;
-	SDL_Surface* text = TTF_RenderText_Shaded(font, label, fg, bg);
+	SDL_Surface* text = TTF_RenderText_Shaded(gd.font, label, fg, bg);
 	SDL_Rect r = { marginx, marginy, text->w, text->h };
 	g.s = SDL_CreateRGBSurface(
 		0,
@@ -48,24 +49,24 @@ GUIThing button(
 		32,
 		0, 0, 0, 0xff
 	);
-	borderfill(g.s, border, bg);
+	borderfill(gd, g.s, border, bg);
 	SDL_BlitSurface(text, NULL, g.s, &r);
 	SDL_FreeSurface(text);
 	g.r = { 0, 0, g.s->w, g.s->h };
 	return g;
 }
-GUIThing button(int w, int h, COLOR_ARGS(,,))
+GUIThing button(GameData& gd, int w, int h, COLOR_ARGS(,,))
 {
 	GUIThing g; g.type = GUI_BUTTON; SET_COLORS(g);
 	g.s = SDL_CreateRGBSurface(0, w, h, 32, 0, 0, 0, 0xff);
-	borderfill(g.s, border, bg);
+	borderfill(gd, g.s, border, bg);
 	g.r = { 0, 0, w, h };
 	return g;
 }
 
 #define TEXTMARGIN 5
 GUIThing inputbox(
-	TTF_Font* font,
+	GameData& gd,
 	const char* label,
 	int w,
 	SDL_Color outer,
@@ -73,8 +74,8 @@ GUIThing inputbox(
 )
 {
 	GUIThing g; g.type = GUI_INPUT; SET_COLORS(g);
-	int h = TTF_FontHeight(font) + 2;
-	SDL_Surface* text = TTF_RenderText_Shaded(font, label, fg, outer);
+	int h = TTF_FontHeight(gd.font) + 2;
+	SDL_Surface* text = TTF_RenderText_Shaded(gd.font, label, fg, outer);
 	g.s = SDL_CreateRGBSurface(
 		0,
 		w + text->w + TEXTMARGIN, (h < text->h) ? text->h : h,
@@ -85,7 +86,7 @@ GUIThing inputbox(
 	SDL_Rect r = { 0, (g.s->h - text->h) / 2, text->w, text->h };
 	SDL_BlitSurface(text, NULL, g.s, &r);
 	SDL_FreeSurface(text);
-	g.textarea = { text->w + TEXTMARGIN, (g.s->h - h) / 2, w, h };
+	g.textarea = { g.s->w - w, (g.s->h - h) / 2, w, h };
 	SDL_FillRect(
 		g.s, &g.textarea,
 		SDL_MapRGBA(g.s->format, border.r, border.g, border.b, border.a)
@@ -99,24 +100,24 @@ GUIThing inputbox(
 	g.r = { 0, 0, g.s->w, g.s->h };
 	return g;
 }
-GUIThing numinputbox(TTF_Font* font, const char* label, int w, SDL_Color outer, COLOR_ARGS(,,))
+GUIThing numinputbox(GameData& gd, const char* label, int w, SDL_Color outer, COLOR_ARGS(,,))
 {
-	GUIThing g = inputbox(font, label, w, outer, border, bg, fg);
+	GUIThing g = inputbox(gd, label, w, outer, border, bg, fg);
 	g.subtype = GUIST_NUMINPUT;
 	return g;
 }
 
 #define BOXMARGIN 2
-void redrawinput(TTF_Font* font, GUIThing* box, bool editing)
+void redrawinput(GameData& gd, GUIThing* box)
 {
 	int w, h;
-	TTF_SizeText(font, box->value.c_str(), &w, &h);
+	TTF_SizeText(gd.font, box->value.c_str(), &w, &h);
 	box->overflown |= w > box->textarea.w - 2 * BOXMARGIN;
 	if (box->overflown & 1 && box->value.size()) box->value.pop_back();
 	// turn red when overflowing and blue while editing
 	SDL_Color bg = box->bg;
-	bg.r -= (editing && !box->overflown) * 0x10;
-	bg.g -= editing * 0x10;
+	bg.r -= (gd.textediting && !box->overflown) * 0x10;
+	bg.g -= gd.textediting * 0x10;
 	bg.b -= box->overflown % 2 * 0x10;
 	// draw textbox background and text
 	SDL_FillRect(box->s, &box->textarea, SDL_MapRGBA(box->s->format, bg.r, bg.g, bg.b, bg.a));
@@ -124,12 +125,12 @@ void redrawinput(TTF_Font* font, GUIThing* box, bool editing)
 	{
 		SDL_Rect r = box->textarea;
 		r.x += BOXMARGIN; r.w -= 2 * BOXMARGIN;
-		SDL_Surface* t = TTF_RenderText_Shaded(font, box->value.c_str(), box->fg, bg);
+		SDL_Surface* t = TTF_RenderText_Shaded(gd.font, box->value.c_str(), box->fg, bg);
 		SDL_BlitSurface(t, NULL, box->s, &r);
 		SDL_FreeSurface(t);
 	}
 	// draw cursor
-	if (!editing || box->overflown) return;
+	if (!gd.textediting || box->overflown) return;
 	SDL_Rect cursor = { box->textarea.x + w + BOXMARGIN, box->textarea.y, 1, box->textarea.h };
 	SDL_FillRect(
 		box->s,
@@ -142,8 +143,8 @@ void redrawinput(TTF_Font* font, GUIThing* box, bool editing)
 // sets b to a if a comp b is true
 #define SETB_IF(a, comp, b) if (a comp b) b = a
 GUIThing backdrop(
+	GameData& gd,
 	std::vector<GUIThing> &guithings,
-	TTF_Font* font,
 	const char* title,
 	int marginx, int marginy,
 	COLOR_ARGS(,,)
@@ -154,7 +155,7 @@ GUIThing backdrop(
 	if (hastitle)
 	{
 		b.value = title;
-		t.s = TTF_RenderText_Shaded(font, title, fg, bg);
+		t.s = TTF_RenderText_Shaded(gd.font, title, fg, bg);
 	}
 	else b.value = "";
 	if (!guithings.size())
@@ -196,7 +197,7 @@ GUIThing backdrop(
 	b.r.y -= marginy; b.r.h += marginy * 2;
 	// render this
 	b.s = SDL_CreateRGBSurface(0, b.r.w, b.r.h, 32, 0, 0, 0, 0xff);
-	borderfill(b.s, border, bg);
+	borderfill(gd, b.s, border, bg);
 	if (hastitle)
 	{
 		SDL_BlitSurface(t.s, NULL, b.s, &t.r);
@@ -206,6 +207,7 @@ GUIThing backdrop(
 }
 
 GUIThing* addthing(
+	GameData& gd,
 	std::vector<GUIThing> &guithings,
 	GUIThing thing,
 	ThingAlignment align,
@@ -230,8 +232,8 @@ GUIThing* addthing(
 }
 
 void columnate(
+	GameData& gd,
 	std::vector<GUIThing> &guithings,
-	TTF_Font* font,
 	const char* title,
 	std::vector<std::string> &strings, unsigned int numcols,
 	SDL_Rect r,
@@ -240,21 +242,22 @@ void columnate(
 	COLOR_ARGS(,,)
 )
 {
-	if (title && title[0]) r = addthing(guithings, textbox(font, "Maps"), ALIGN_CENTER, &r)->r;
+	if (title && title[0]) r = addthing(gd, guithings, textbox(gd, "Maps"), ALIGN_CENTER, &r)->r;
 	if (!strings.size()) return;
 	// generate columns
 	numcols = (strings.size() < numcols) ? strings.size() : numcols;
 	std::vector<GUIThing> columns[numcols];
 	for (int i = 0; i < strings.size(); i++)
 		addthing(
+			gd,
 			columns[i % numcols],
-			button(font, strings[i].c_str(), 5, 1, border, bg, fg)
+			button(gd, strings[i].c_str(), 5, 1, border, bg, fg)
 		);
 	// generate backdrops and align them and their contents like ALIGN_TOP
 	GUIThing bdrs[numcols];
 	for (int i = 0; i < numcols; i++)
 	{
-		bdrs[i] = backdrop(columns[i], font, NULL, marginx, marginy, outer);
+		bdrs[i] = backdrop(gd, columns[i], NULL, marginx, marginy, outer);
 		SDL_Point offset = {
 			i ? bdrs[i - 1].r.x + bdrs[i - 1].r.w + 5 - bdrs[i].r.x : 0,
 			r.y + r.h - bdrs[i].r.y

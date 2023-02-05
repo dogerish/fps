@@ -3,104 +3,117 @@
 #include <SDL_ttf.h>
 #include "gui.h"
 
-GUIThing* startinput(TTF_Font* font, GUIThing* box)
+bool isnumerical(char c) { return c >= '0' && c <= '9' || c == '.' || c == '-'; }
+
+int GUIPage::button_click(GameData& gd, GUIThing* thing)
 {
-	SDL_StartTextInput();
-	redrawinput(font, box);
-	return box;
-}
-GUIThing* stopinput(TTF_Font* font, GUIThing* focused)
-{
-	SDL_StopTextInput();
-	redrawinput(font, focused, false);
-	focused->overflown = 0;
-	return NULL;
+	return 1;
 }
 
-int onclick(GUIPage* page, SDL_Point mouse)
+int GUIPage::page_close(GameData& gd) { return 0; }
+
+void GUIPage::update(GameData& gd, int dt) { }
+
+void GUIPage::draw(GameData& gd)
 {
-	if (page->focused) page->focused = stopinput(page->font, page->focused);
+	SDL_Rect copy = bdr.r;
+	SDL_BlitSurface(bdr.s, NULL, gd.surface, &copy);
+	for (GUIThing g : things)
+		if (g.shown) SDL_BlitSurface(g.s, NULL, gd.surface, &(copy = g.r));
+}
+
+void GUIPage::center_page(GameData& gd)
+{
+	SDL_Point center = { gd.surface->w / 2, gd.surface->h / 2 };
+	// calculate the offset from the current center and move everything by that offset
+	center.x -= bdr.r.x + bdr.r.w / 2;
+	center.y -= bdr.r.y + bdr.r.h / 2;
+	bdr.r.x += center.x;
+	bdr.r.y += center.y;
+	for (GUIThing &g : things) { g.r.x += center.x; g.r.y += center.y; }
+}
+
+void GUIPage::startinput(GameData& gd, GUIThing* box)
+{
+	SDL_StartTextInput();
+	focused = box;
+	gd.textediting = 1;
+	redrawinput(gd, box);
+}
+void GUIPage::stopinput(GameData& gd)
+{
+	SDL_StopTextInput();
+	gd.textediting = 0;
+	focused->overflown = 0;
+	redrawinput(gd, focused);
+	focused = NULL;
+}
+
+int GUIPage::onclick(GameData& gd, SDL_Point mouse)
+{
+	if (focused) stopinput(gd);
 	// close if click happened outside of backdrop
-	if (!SDL_PointInRect(&mouse, &page->bdr.r)) return -1;
-	for (GUIThing &g : page->things)
+	if (!SDL_PointInRect(&mouse, &bdr.r)) return -1;
+	for (GUIThing &g : things)
 	{
 		if (!g.shown || !SDL_PointInRect(&mouse, &g.r)) continue;
-		if      (g.type == GUI_INPUT)  page->focused = startinput(page->font, &g);
-		else if (g.type == GUI_BUTTON) return page->button_click(page, &g);
+		if      (g.type == GUI_INPUT)  startinput(gd, &g);
+		else if (g.type == GUI_BUTTON) return button_click(gd, &g);
 		else continue;
 		break;
 	}
 	return 0;
 }
 
-int onkeypress(GUIPage *page, SDL_Keycode key)
+int GUIPage::onkeypress(GameData& gd, SDL_Keycode key)
 {
-	if (!page->focused) return 1 - (key == SDLK_ESCAPE) * 2;
+	if (!focused) return 1 - (key == SDLK_ESCAPE) * 2;
 	switch (key)
 	{
 	case SDLK_ESCAPE:
-	case SDLK_RETURN: page->focused = stopinput(page->font, page->focused); break;
+	case SDLK_RETURN: stopinput(gd); break;
 	case SDLK_BACKSPACE:
-		if (!page->focused->overflown && page->focused->value.size())
-			page->focused->value.pop_back();
-		page->focused->overflown = 0;
-		redrawinput(page->font, page->focused);
+		if (!focused->overflown && focused->value.size())
+			focused->value.pop_back();
+		focused->overflown = 0;
+		redrawinput(gd, focused);
 		break;
 	}
 	return 0;
 }
 
-bool isnumerical(char c) { return c >= '0' && c <= '9' || c == '.' || c == '-'; }
-int oninput(GUIPage *page, const char* text)
+int GUIPage::oninput(GameData& gd, const char* text)
 {
-	if (!page->focused || page->focused->overflown & 1) return 1;
-	page->focused->overflown &= ~2;
+	if (!focused || focused->overflown & 1) return 1;
+	focused->overflown &= ~2;
 	int r = 0;
 	// if this is a number input box, only accept numerical characters
-	if (page->focused->subtype == GUIST_NUMINPUT && !isnumerical(*text))
+	if (focused->subtype == GUIST_NUMINPUT && !isnumerical(*text))
 	{
-		page->focused->overflown |= 2;
+		focused->overflown |= 2;
 		r = -1;
 	}
-	else page->focused->value += text;
-	redrawinput(page->font, page->focused);
+	else focused->value += text;
+	redrawinput(gd, focused);
 	return r;
 }
 
-void default_pagedraw(SDL_Surface* surface, GUIPage* page)
+void GUIPage::drawgui(GameData& gd, int dt)
 {
-	SDL_Rect copy = page->bdr.r;
-	SDL_BlitSurface(page->bdr.s, NULL, surface, &copy);
-	for (GUIThing g : page->things)
-		if (g.shown) SDL_BlitSurface(g.s, NULL, surface, &(copy = g.r));
-}
-void drawgui(SDL_Surface* surface, GUIPage *page, int dt)
-{
-	if (page->update) page->update(page, dt);
-	if (page->draw) page->draw(surface, page);
-	else default_pagedraw(surface, page);
+	update(gd, dt);
+	draw(gd);
 }
 
-int closegui(GUIPage* &current, std::vector<GUIPage*> &history)
+int GUIPage::closegui(GameData& gd)
 {
-	if (current->page_close && current->page_close(current, history)) return -1;
-	if (!history.size()) { current = NULL; return 0; }
-	current = history.back();
-	history.pop_back();
+	if (page_close(gd)) return -1;
+	if (!gd.guihistory.size()) { gd.page = -1; return 0; }
+	gd.page = gd.guihistory.back();
+	gd.guihistory.pop_back();
 	return 0;
 }
-void opengui(GUIPage* &current, GUIPage* page, std::vector<GUIPage*> &history)
+void GUIPage::opengui(GameData& gd)
 {
-	if (current) history.push_back(current);
-	current = page;
-}
-
-void center_page(GUIPage &page, SDL_Point center)
-{
-	// calculate the offset from the current center and move everything by that offset
-	center.x -= page.bdr.r.x + page.bdr.r.w / 2;
-	center.y -= page.bdr.r.y + page.bdr.r.h / 2;
-	page.bdr.r.x += center.x;
-	page.bdr.r.y += center.y;
-	for (GUIThing &g : page.things) { g.r.x += center.x; g.r.y += center.y; }
+	if (gd.page >= 0) gd.guihistory.push_back(gd.page);
+	gd.page = id;
 }

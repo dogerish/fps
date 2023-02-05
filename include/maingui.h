@@ -9,49 +9,57 @@
 #include "rays.h"
 #include "game.h"
 
-#define SETUP_ARGS GUIPage &page, TTF_Font* font, GameData* gd, int &draw_w, int &draw_h
-#define PASS_SETUP_ARGS(i) guipages[i], font, &gd, draw_w, draw_h
+#define SETUP_ARGS GameData& gd, int id
 
 // columns of available maps
 void mapcolumns(
+	GameData& gd,
 	std::vector<GUIThing> &guithings,
-	TTF_Font* font, int numcols, SDL_Rect ref,
-	const std::string &resource_path
+	int numcols, SDL_Rect ref
 );
 
 /* ---------- title gui (0) ---------- */
-void titlegui_update(GUIPage* page, int dt);
-int titlegui_click(GUIPage* page, GUIThing* thing);
-void setup_titlegui(SETUP_ARGS);
+class TitleGUI: public GUIPage
+{
+	public:
+		TitleGUI(SETUP_ARGS);
+		int button_click(GameData& gd, GUIThing* thing) override;
+		void update(GameData& gd, int dt) override;
+};
 
 /* ---------- map selector gui (1) ---------- */
-struct mapselgui_data {
-	int* draw_w;
-	int* draw_h;
+class MapSelGUI: public GUIPage
+{
+	public:
+		MapSelGUI(SETUP_ARGS);
+		void refresh(GameData& gd);
+		int button_click(GameData& gd, GUIThing* thing) override;
+		int page_close(GameData& gd) override;
 };
-void mapselgui_refresh(GUIPage &page);
-int mapselgui_click(GUIPage* page, GUIThing* thing);
-int mapselgui_close(GUIPage* page, std::vector<GUIPage*> &history);
-void setup_mapselgui(SETUP_ARGS);
 
 /* ---------- edit gui (2) ---------- */
-GUIThing editgui_listmaps(
-	std::vector<GUIThing> &guithings, TTF_Font* font, std::string& mapname,
-	const std::string &resource_path
-);
-int editgui_click(GUIPage* page, GUIThing* thing);
-void editgui_update(GUIPage* page, int dt);
-void setup_editgui(SETUP_ARGS);
+class EditGUI: public GUIPage
+{
+	public:
+		EditGUI(SETUP_ARGS);
+		GUIThing listmaps(GameData& gd);
+		int button_click(GameData& gd, GUIThing* thing) override;
+		void update(GameData& gd, int dt) override;
+};
 
 /* ---------- wall gui (3) ---------- */
 struct wallgui_data {
 	int last_hl = 0;
 };
-void wallbutton_update(GUIThing* g);
-void wallbutton_update(GUIThing* g, int overflown);
-int wallgui_click(GUIPage* page, GUIThing* thing);
-void wallgui_update(GUIPage* page, int dt);
-void wallgui_draw(SDL_Surface* surface, GUIPage* page);
-void setup_wallgui(SETUP_ARGS);
+class WallGUI: public GUIPage
+{
+	public:
+		WallGUI(SETUP_ARGS);
+		static void button_update(GameData& gd, GUIThing* g);
+		static void button_update(GameData& gd, GUIThing* g, int overflown);
+		int button_click(GameData& gd, GUIThing* thing) override;
+		void update(GameData& gd, int dt) override;
+		void draw(GameData& gd) override;
+};
 
 #endif

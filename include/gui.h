@@ -4,6 +4,7 @@
 #include <SDL_ttf.h>
 #include <vector>
 #include <string>
+#include "game.h"
 
 // SDL_Color initialization lists for common colors
 #define BLACK(alpha)  { 0x00, 0x00, 0x00, alpha }
@@ -47,44 +48,44 @@ struct GUIThing {
 	SDL_Color fg;
 };
 
-void borderfill(SDL_Surface* surface, SDL_Color border, SDL_Color bg);
+void borderfill(GameData& gd, SDL_Surface* surface, SDL_Color border, SDL_Color bg);
 
 GUIThing textbox(
-	TTF_Font* font,
+	GameData& gd,
 	const char* text,
 	SDL_Color bg = GRAY(0xff),
 	SDL_Color fg = WHITE(0xff)
 );
 
 GUIThing button(
-	TTF_Font* font,
+	GameData& gd,
 	const char* label,
 	int marginx = 5, int marginy = 1,
 	DEFAULT_COLOR_ARGS
 );
-GUIThing button(int w, int h, DEFAULT_COLOR_ARGS);
+GUIThing button(GameData& gd, int w, int h, DEFAULT_COLOR_ARGS);
 
 GUIThing inputbox(
-	TTF_Font* font,
+	GameData& gd,
 	const char* label,
 	int w,
 	SDL_Color outer = GRAY(0xff),
 	DEFAULT_COLOR_ARGS
 );
 GUIThing numinputbox(
-	TTF_Font* font,
+	GameData& gd,
 	const char* label,
 	int w,
 	SDL_Color outer = GRAY(0xff),
 	DEFAULT_COLOR_ARGS
 );
 
-void redrawinput(TTF_Font* font, GUIThing* box, bool editing = true);
+void redrawinput(GameData& gd, GUIThing* box);
 
 // set title to NULL for no title
 GUIThing backdrop(
+	GameData& gd,
 	std::vector<GUIThing> &guithings,
-	TTF_Font* font,
 	const char* title,
 	int marginx = 5, int marginy = 5,
 	COLOR_ARGS(= BLACK(0xff),= GRAY(0xff),= WHITE(0xff))
@@ -98,6 +99,7 @@ enum ThingAlignment {
 };
 // returns a pointer to the GUIThing that was added
 GUIThing* addthing(
+	GameData& gd,
 	std::vector<GUIThing> &guithings,
 	GUIThing thing,
 	ThingAlignment align = ALIGN_CENTER,
@@ -108,8 +110,8 @@ GUIThing* addthing(
 // make column layout for list of strings which will be made into buttons which are appended
 // NULL title for none
 void columnate(
+	GameData& gd,
 	std::vector<GUIThing> &guithings,
-	TTF_Font* font,
 	const char* title,
 	std::vector<std::string> &strings, unsigned int numcols,
 	SDL_Rect alignto,
