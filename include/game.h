@@ -4,29 +4,39 @@
 #include <SDL_ttf.h>
 #include <string>
 #include <vector>
+#include <fstream>
 #include "vec.h"
 #include "map.h"
 
 enum GameMode { GM_TITLESCREEN, GM_EDITING, GM_PLAYING };
 
 // variables for game
-struct GameData {
-	SDL_Window* window = NULL;
-	SDL_Surface* surface = NULL;
-	TTF_Font* font = NULL;
-	std::string resource_path = "resources";
-	Vec2d<float> pos;
-	float fov;
-	float fps;
-	// normalized coordinates from leftmost fov to rightmost
-	Vec2d<float> fieldleft, fieldcenter, fieldright;
-	int gamemode;
-	int textediting = 0;
-	bool editmode; Vec2d<int> hl;
-	Map* map;
-	// gui page id for current and history
-	int page;
-	std::vector<int> guihistory;
+class GameData {
+	public:
+		std::ofstream logfile;
+		SDL_Window* window = NULL;
+		SDL_Surface* surface = NULL;
+		TTF_Font* font = NULL;
+		Map* map;
+
+		std::string resource_path = "resources";
+
+		Vec2d<float> pos;
+		float fov;
+		float fps = 0;
+		// normalized coordinates from leftmost fov to rightmost
+		Vec2d<float> fieldleft, fieldcenter, fieldright;
+
+		int gamemode;
+		bool textediting = false, editmode = false; Vec2d<int> hl;
+		// gui page id for current and history
+		int page;
+		std::vector<int> guihistory;
+
+
+		GameData(const char* logfilename = "logfile.txt");
+		~GameData();
+		void log(std::string message);
 };
 
 struct GameTextures

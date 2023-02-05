@@ -35,8 +35,7 @@ static int SDLCALL filter(void* userdata, SDL_Event* e)
 
 #define QUITGAME quit(gd, tex)
 #define ERROR_RETURN(code, lib) \
-	logfile << lib##_GetError() << std::endl; QUITGAME; \
-	logfile.close(); \
+	gd.log(lib##_GetError()); QUITGAME; \
 	return code;
 
 void blit_centered(SDL_Surface* src, SDL_Surface* dst)
@@ -66,7 +65,6 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	std::ofstream logfile("logfile.txt", std::ofstream::out);
 	// initialize stuff
 	if (init(gd, "WalkerPonk 2069", 720, 480)) { ERROR_RETURN(1, SDL); }
 	if (TTF_Init()) { ERROR_RETURN(1, TTF); }
@@ -79,7 +77,7 @@ int main(int argc, char* argv[])
 		if (IMG_GetError()[0]) { ERROR_RETURN(1, IMG); }
 	}
 	gd.font = TTF_OpenFont((gd.resource_path + "/font.ttf").c_str(), 14);
-	if (gd.font == NULL) { logfile << TTF_GetError() << std::endl; logfile.close(); return 3; }
+	if (gd.font == NULL) { ERROR_RETURN(3, TTF); }
 	// game vars
 	gd.map = create_map(25, 25);
 	gd.pos = { gd.map->w / 2.f, gd.map->h / 2.f, 0 };
@@ -235,6 +233,5 @@ int main(int argc, char* argv[])
 		delete guipages[i];
 	free_map(gd.map);
 	QUITGAME;
-	logfile.close();
 	return 0;
 }
