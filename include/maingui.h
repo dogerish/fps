@@ -9,7 +9,7 @@
 #include "rays.h"
 #include "game.h"
 
-#define SETUP_ARGS GameData& gd, int id
+#define SETUP_ARGS GameData& gd, int id, std::string name
 
 // columns of available maps
 void mapcolumns(
@@ -22,8 +22,9 @@ void mapcolumns(
 class TitleGUI: public GUIPage
 {
 	public:
+		enum TITLEGUI_INDICES { TGHOME, TGPLAY, TGEDIT, TGSELMAP, TGEDITMAP, TGSETTINGS, TGEXIT };
+
 		TitleGUI(SETUP_ARGS);
-		int button_click(GameData& gd, GUIThing* thing) override;
 		void update(GameData& gd, int dt) override;
 };
 
@@ -32,8 +33,7 @@ class MapSelGUI: public GUIPage
 {
 	public:
 		MapSelGUI(SETUP_ARGS);
-		void refresh(GameData& gd);
-		int button_click(GameData& gd, GUIThing* thing) override;
+		void refresh(GameData& gd) override;
 		int page_close(GameData& gd) override;
 };
 
@@ -41,9 +41,11 @@ class MapSelGUI: public GUIPage
 class EditGUI: public GUIPage
 {
 	public:
+		enum EDITGUI_INDICES { EGNAME, EGSAVE, EGLOAD, EGWALL, EGNEWMAP };
+
 		EditGUI(SETUP_ARGS);
 		GUIThing listmaps(GameData& gd);
-		int button_click(GameData& gd, GUIThing* thing) override;
+		void refresh(GameData& gd) override;
 		void update(GameData& gd, int dt) override;
 };
 
@@ -54,10 +56,12 @@ struct wallgui_data {
 class WallGUI: public GUIPage
 {
 	public:
+		enum WALLGUI_INDICES { WG_WALLSTART = 0 };
+
 		WallGUI(SETUP_ARGS);
 		static void button_update(GameData& gd, GUIThing* g);
 		static void button_update(GameData& gd, GUIThing* g, int overflown);
-		int button_click(GameData& gd, GUIThing* thing) override;
+		void refresh(GameData& gd) override;
 		void update(GameData& gd, int dt) override;
 		void draw(GameData& gd) override;
 };

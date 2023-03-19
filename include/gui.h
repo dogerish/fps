@@ -46,6 +46,8 @@ struct GUIThing {
 	SDL_Color border;
 	SDL_Color bg;
 	SDL_Color fg;
+
+	std::string onclick;
 };
 
 void borderfill(GameData& gd, SDL_Surface* surface, SDL_Color border, SDL_Color bg);

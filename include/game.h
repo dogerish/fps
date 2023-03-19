@@ -7,6 +7,7 @@
 #include <fstream>
 #include "vec.h"
 #include "map.h"
+#include "command.h"
 
 enum GameMode { GM_TITLESCREEN, GM_EDITING, GM_PLAYING };
 
@@ -16,6 +17,7 @@ class GameData {
 		std::ofstream logfile;
 		SDL_Window* window = NULL;
 		SDL_Surface* surface = NULL;
+		CommandHandler* cmdhand = NULL;
 		TTF_Font* font = NULL;
 		Map* map;
 

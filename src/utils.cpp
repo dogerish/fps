@@ -28,6 +28,7 @@ void quit(GameData& gd, GameTextures &tex)
 	SDL_FreeSurface(tex.crosshair);
 	SDL_DestroyWindow(gd.window);
 	SDL_Quit();
+	delete gd.cmdhand;
 }
 
 SDL_Surface* loadwithfmt(GameData &gd, std::string file, Uint32 fmt)

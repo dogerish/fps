@@ -3,6 +3,7 @@
 #include <SDL.h>
 #include <SDL_ttf.h>
 #include <vector>
+#include <string>
 #include "gui.h"
 #include "game.h"
 
@@ -12,19 +13,22 @@ bool isnumerical(char c);
 class GUIPage {
 	public:
 		int id;
+		std::string name;
 		GUIThing bdr;
 		std::vector<GUIThing> things;
 		GUIThing* focused = NULL;
 		void* userdata = NULL;
 
 		// see return code for onclick()
-		virtual int button_click(GameData& gd, GUIThing* thing);
+		virtual void button_click(GameData& gd, GUIThing* thing);
 		// return non-zero if the page shouldn't close
 		virtual int page_close(GameData& gd);
 		// update the page
 		virtual void update(GameData& gd, int dt);
 		// draw page to surface
 		virtual void draw(GameData& gd);
+		// refresh the page
+		virtual void refresh(GameData& gd);
 
 		// centers the page and its contents around center of gd.surface
 		void center_page(GameData& gd);
@@ -32,15 +36,9 @@ class GUIPage {
 		void startinput(GameData& gd, GUIThing* box);
 		void stopinput(GameData& gd);
 
-		/* return code:
-		   -2 - i: close this page and then open gui index <i>. this page won't be restored.
-		   -1    : close this page
-		    0    : do nothing special (normal return)
-		    1    : undefined
-		    2 + i: open gui index <i>, restore this page when that gui is closed
-		*/
-		int onclick(GameData& gd, SDL_Point mouse);
-		// returns 0 normally, 1 if the input should still be processed, and -1 if the page should close
+		void onclick(GameData& gd, SDL_Point mouse);
+		// returns 0 normally, 1 if the input should still be processed, and -1 if the page 
+		// should close
 		int onkeypress(GameData& gd, SDL_Keycode key);
 		/* return code:
 		   -1: input was ignored because the character isn't allowed

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <string>
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include "unistd.h"
@@ -16,6 +17,7 @@
 #include "vec.h"
 #include "map.h"
 #include "game.h"
+#include "command.h"
 
 static int SDLCALL filter(void* userdata, SDL_Event* e)
 {
@@ -46,11 +48,223 @@ void blit_centered(SDL_Surface* src, SDL_Surface* dst)
 
 const char* USAGE = "raycaster [-Rresource_directory]\n";
 
+GameData gd;
+GameTextures tex;
+const int NUMPAGES = 4;
+enum GUIPageID {
+	GP_NONE = -1,
+	GP_TITLE = 0,
+	GP_MAPSEL = 1,
+	GP_EDIT = 2,
+	GP_WALL = 3
+};
+GUIPage* guipages[NUMPAGES];
+
+/* -- COMMAND FUNCTIONS -- */
+#define CALLARGVRES(res, args...) gd.cmdhand->call(std::vector<std::string> { args }, res)
+#define CALLARGV(args...) gd.cmdhand->call(std::vector<std::string> { args })
+#define CMDDEF(name, body) \
+	unsigned int cmdfun_ ## name (const std::vector<std::string> &argv, std::string &result) \
+	body \
+	Command cmd_ ## name = { #name, cmdfun_ ## name };
+
+	/* - VARIABLES - */
+
+	/* gamemode [titlescreen|playing|editing] */
+CMDDEF(gamemode, 
+{
+	if (argv.size() > 1)
+	{
+		std::string n = argv[1];
+		gd.map->loaded = gd.gamemode != GM_TITLESCREEN;
+		if      (n == "titlescreen")
+		{
+			gd.gamemode = GM_TITLESCREEN;
+			gd.map->loaded = false;
+		}
+		else if (n == "playing") gd.gamemode = GM_PLAYING;
+		else if (n == "editing") gd.gamemode = GM_EDITING;
+		else
+		{
+			gd.log("Unknown gamemode");
+			return 1;
+		}
+		// if mode needs map but doens't have one, select map
+		if ((gd.gamemode == GM_PLAYING || gd.gamemode == GM_EDITING) && !gd.map->loaded)
+		{
+			CALLARGV("closegui");
+			CALLARGV("showgui", "mapsel");
+		}
+	}
+	switch (gd.gamemode)
+	{
+	case GM_TITLESCREEN: result = "titlescreen"; break;
+	case GM_PLAYING: result = "playing"; break;
+	case GM_EDITING: result = "editing"; break;
+	}
+	return 0;
+})
+
+	/* editguimapname [<name>] */
+CMDDEF(editguimapname,
+{
+	GUIThing &t = guipages[GP_EDIT]->things[EditGUI::EGNAME];
+	if (argv.size() > 1)
+	{
+		t.value = argv[1];
+		redrawinput(gd, &t);
+	}
+	result = t.value;
+	return 0;
+})
+
+	/* - COMMANDS - */
+
+	/* echo <text> */
+CMDDEF(echo, 
+{
+	if (argv.size() < 2) gd.log(result = "");
+	else gd.log(result = argv[1]);
+	return 0;
+})
+
+	/* showgui <guiname> */
+CMDDEF(showgui, 
+{
+	if (argv.size() < 2) return 1;
+	std::string name = argv[1];
+	for (int i = 0; i < NUMPAGES; i++)
+	{
+		if (guipages[i]->name == name)
+		{
+			guipages[i]->opengui(gd);
+			return 0;
+		}
+	}
+	gd.log("Unknown gui page");
+	return 1;
+})
+
+	/* closegui */
+CMDDEF(closegui, 
+{
+	if (gd.page >= 0) guipages[gd.page]->closegui(gd);
+	return 0;
+})
+
+	/* refreshgui <guiname> */
+CMDDEF(refreshgui, 
+{
+	if (argv.size() < 2) return 1;
+	std::string name = argv[1];
+	for (int i = 0; i < NUMPAGES; i++)
+	{
+		if (guipages[i]->name == name)
+		{
+			guipages[i]->refresh(gd);
+			return 0;
+		}
+	}
+	gd.log("Unknown gui page");
+	return 1;
+})
+
+	/* savemap <name> */
+CMDDEF(savemap, 
+{
+	if (argv.size() < 2)
+	{
+		gd.log("Saving failed; no name given.");
+		return 2;
+	}
+	if (savemap(gd.map, argv[1], gd.resource_path))
+	{
+		gd.log("Saving failed.");
+		return 1;
+	}
+	guipages[GP_EDIT]->refresh(gd);
+	return 0;
+})
+
+	/* loadmap <name> */
+CMDDEF(loadmap, 
+{
+	if (argv.size() < 2)
+	{
+		gd.log("Loading failed; no name given.");
+		return 2;
+	}
+	if (loadmap(gd.map, gd.pos, argv[1], gd.resource_path))
+	{
+		gd.log("Loading failed.");
+		return 1;
+	}
+	return 0;
+})
+
+	/* newmap */
+CMDDEF(newmap, 
+{
+	newmap(gd.map, gd.pos);
+	return 0;
+})
+
+	/* quit */
+CMDDEF(quit, 
+{
+	SDL_Event e; e.type = SDL_QUIT;
+	SDL_PushEvent(&e);
+	return 0;
+})
+
+	/* wall <x> <y> [<value>] */
+CMDDEF(wall, 
+{
+	if (argv.size() < 3)
+	{
+		gd.log("Not enough arguments.");
+		return 1;
+	}
+	int x = CommandHandler::parseint(argv[1], -1);
+	int y = CommandHandler::parseint(argv[2], -1);
+	if (x < 0 || x > gd.map->w || y < 0 || y > gd.map->h)
+	{
+		gd.log("Coordinates out of range.");
+		return 2;
+	}
+	int i = x + y * gd.map->w;
+	GUIThing &t = guipages[GP_WALL]->things[WallGUI::WG_WALLSTART + i];
+	if (argv.size() > 3)
+	{
+		int action = CommandHandler::parseint(argv[3], -1);
+		if (action < 0)
+			gd.map->data[i].clip = t.overflown = !gd.map->data[i].clip;
+		else
+			gd.map->data[i].clip = t.overflown = (bool) action;
+		if (gd.map->data[i].n == 0) set_faces(&gd.map->data[i], 1, 1, 1, 1);
+		WallGUI::button_update(gd, &t);
+	}
+	result = std::to_string(gd.map->data[i].clip);
+	return 0;
+})
+
 int main(int argc, char* argv[])
 {
+	std::vector<Command> cmdv = {
+		cmd_editguimapname,
+		cmd_echo,
+		cmd_gamemode,
+		cmd_showgui,
+		cmd_closegui,
+		cmd_refreshgui,
+		cmd_savemap,
+		cmd_loadmap,
+		cmd_newmap,
+		cmd_quit,
+		cmd_wall
+	};
+	gd.cmdhand = new CommandHandler(cmdv);
 	// parse command line options
-	GameData gd;
-	GameTextures tex;
 	int o;
 	while ((o = getopt(argc, argv, "R:")) != -1)
 	{
@@ -85,14 +299,11 @@ int main(int argc, char* argv[])
 	// editing variables
 	gd.gamemode = GM_TITLESCREEN;
 	gd.editmode = false; gd.hl = { 0, 0, 0 };
-	// set up gui things
-	const int NUMPAGES = 4;
-	GUIPage* guipages[NUMPAGES];
-	guipages[0] = new  TitleGUI(gd, 0);
-	guipages[1] = new MapSelGUI(gd, 1);
-	guipages[2] = new   EditGUI(gd, 2);
-	guipages[3] = new   WallGUI(gd, 3);
-	gd.page = 0;
+	guipages[GP_TITLE] = new TitleGUI(gd, GP_TITLE, "title");
+	guipages[GP_MAPSEL] = new MapSelGUI(gd, GP_MAPSEL, "mapsel");
+	guipages[GP_EDIT] = new EditGUI(gd, GP_EDIT, "edit");
+	guipages[GP_WALL] = new WallGUI(gd, GP_WALL, "wall");
+	gd.page = GP_TITLE;
 	SDL_StopTextInput();
 	// main loop variables
 	Uint32 lasttick = SDL_GetTicks(), tdiff = 0, lastfpstick = 0;
@@ -192,14 +403,7 @@ int main(int argc, char* argv[])
 			case SDL_MOUSEBUTTONDOWN:
 			{
 				if (gd.page < 0) break;
-				int r = guipages[gd.page]->onclick(gd, { e.button.x, e.button.y });
-				// decode response
-				if (!r) break;
-				else if (r > 1 && r - 2 < NUMPAGES)
-					guipages[r - 2]->opengui(gd);
-				// change gui without writing history
-				else if (r < -1 && -2 - r < NUMPAGES) gd.page = -2 - r;
-				else if (r == -1) guipages[gd.page]->closegui(gd);
+				guipages[gd.page]->onclick(gd, { e.button.x, e.button.y });
 				break;
 			}
 			case SDL_WINDOWEVENT:

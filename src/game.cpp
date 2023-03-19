@@ -1,6 +1,7 @@
 #include "game.h"
 #include <string>
 #include <fstream>
+#include <iostream>
 
 GameData::GameData(const char* logfilename)
 {
@@ -14,5 +15,6 @@ GameData::~GameData()
 
 void GameData::log(std::string message)
 {
+	std::cout << message << std::endl;
 	logfile << message << std::endl;
 }

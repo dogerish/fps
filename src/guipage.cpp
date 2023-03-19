@@ -2,12 +2,16 @@
 #include <SDL.h>
 #include <SDL_ttf.h>
 #include "gui.h"
+#include <vector>
+#include <string>
 
 bool isnumerical(char c) { return c >= '0' && c <= '9' || c == '.' || c == '-'; }
 
-int GUIPage::button_click(GameData& gd, GUIThing* thing)
+void GUIPage::button_click(GameData& gd, GUIThing* thing)
 {
-	return 1;
+	std::string result;
+	if (gd.cmdhand->run(thing->onclick, result) == -1)
+		gd.log(gd.cmdhand->geterror());
 }
 
 int GUIPage::page_close(GameData& gd) { return 0; }
@@ -21,6 +25,8 @@ void GUIPage::draw(GameData& gd)
 	for (GUIThing g : things)
 		if (g.shown) SDL_BlitSurface(g.s, NULL, gd.surface, &(copy = g.r));
 }
+
+void GUIPage::refresh(GameData& gd) {}
 
 void GUIPage::center_page(GameData& gd)
 {
@@ -49,20 +55,27 @@ void GUIPage::stopinput(GameData& gd)
 	focused = NULL;
 }
 
-int GUIPage::onclick(GameData& gd, SDL_Point mouse)
+void GUIPage::onclick(GameData& gd, SDL_Point mouse)
 {
 	if (focused) stopinput(gd);
 	// close if click happened outside of backdrop
-	if (!SDL_PointInRect(&mouse, &bdr.r)) return -1;
+	if (!SDL_PointInRect(&mouse, &bdr.r))
+	{
+		gd.cmdhand->call(std::vector<std::string> { "closegui" });
+		return;
+	}
 	for (GUIThing &g : things)
 	{
 		if (!g.shown || !SDL_PointInRect(&mouse, &g.r)) continue;
 		if      (g.type == GUI_INPUT)  startinput(gd, &g);
-		else if (g.type == GUI_BUTTON) return button_click(gd, &g);
+		else if (g.type == GUI_BUTTON)
+		{
+			button_click(gd, &g);
+			return;
+		}
 		else continue;
 		break;
 	}
-	return 0;
 }
 
 int GUIPage::onkeypress(GameData& gd, SDL_Keycode key)

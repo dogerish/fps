@@ -26,20 +26,25 @@ void mapcolumns(
 	);
 }
 
-enum TITLEGUI_INDICES { TGHOME, TGPLAY, TGEDIT, TGSELMAP, TGEDITMAP, TGSETTINGS, TGEXIT };
-
 TitleGUI::TitleGUI(SETUP_ARGS)
 {
 	this->id = id;
+	this->name = name;
 	things.reserve(5);
-	SDL_Rect leftref = addthing(gd, things, button(gd, "Home"))->r;
-	SDL_Rect ref = addthing(gd, things, button(gd, "Play"), ALIGN_TOP)->r;
-	addthing(gd, things, button(gd, "Edit"), ALIGN_TOP);
-	addthing(gd, things, button(gd, "Select Map"), ALIGN_CENTER, &ref);
-	addthing(gd, things, button(gd, "Edit..."), ALIGN_CENTER, &ref);
-	ref = addthing(gd, things, button(gd, "Settings"))->r;
+	GUIThing* tmp = addthing(gd, things, button(gd, "Home"));
+	tmp->onclick = "gamemode titlescreen";
+	SDL_Rect leftref = tmp->r;
+	tmp = addthing(gd, things, button(gd, "Play"), ALIGN_TOP);
+	tmp->onclick = "gamemode playing";
+	SDL_Rect ref = tmp->r;
+	addthing(gd, things, button(gd, "Edit"), ALIGN_TOP)->onclick = "gamemode editing";
+	addthing(gd, things, button(gd, "Select Map"), ALIGN_CENTER, &ref)->onclick = "closegui; showgui mapsel";
+	addthing(gd, things, button(gd, "Edit..."), ALIGN_CENTER, &ref)->onclick = "showgui edit";
+	tmp = addthing(gd, things, button(gd, "Settings"));
+	tmp->onclick = "showgui settings";
+	ref = tmp->r;
 	ref = { leftref.x, ref.y, leftref.w, ref.h };
-	addthing(gd, things, button(gd, "Exit", 5, 1, RED(0xff)), ALIGN_LEFT, &ref, 15);
+	addthing(gd, things, button(gd, "Exit", 5, 1, RED(0xff)), ALIGN_LEFT, &ref, 15)->onclick = "quit";
 	bdr = backdrop(gd, things, "Main Menu");
 	center_page(gd);
 }
@@ -53,32 +58,13 @@ void TitleGUI::update(GameData& gd, int dt)
 	things[TGEDITMAP].shown = gd.gamemode == GM_EDITING;
 }
 
-int TitleGUI::button_click(GameData& gd, GUIThing* thing)
-{
-	int i = thing - &things[0];
-	switch (i)
-	{
-	case TGHOME: gd.gamemode = GM_TITLESCREEN; return 0;
-	// play / edit
-	case TGPLAY:
-	case TGEDIT:
-		gd.map->loaded = gd.gamemode != GM_TITLESCREEN;
-		gd.gamemode = (i == TGPLAY) ? GM_PLAYING : GM_EDITING;
-	case TGSELMAP:   return -2 - 1; // close page and select map
-	case TGEDITMAP:  return  2 + 2; // edit gui
-	case TGSETTINGS: return  2 + 4; // settings
-	case TGEXIT:
-		SDL_Event e; e.type = SDL_QUIT;
-		SDL_PushEvent(&e);
-	default: return 0;
-	}
-}
-
 MapSelGUI::MapSelGUI(SETUP_ARGS)
 {
 	this->id = id;
+	this->name = name;
 	GUIThing refresh_button = button(gd, "Refresh");
 	refresh_button.id = 0;
+	refresh_button.onclick = "refreshgui mapsel";
 	addthing(gd, things, refresh_button);
 	bdr.value = "Map Selector";
 	refresh(gd);
@@ -90,23 +76,14 @@ void MapSelGUI::refresh(GameData& gd)
 	for (GUIThing &g : things) if (g.id != 0) SDL_FreeSurface(g.s);
 	if (things.size() > 1) things.erase(things.begin() + 1, things.end());
 	mapcolumns(gd, things, 5, things.back().r);
+	// add onclick commands to maps
+	for (GUIThing &g : things)
+		if (g.id < 0)
+			g.onclick = "loadmap " + gd.cmdhand->escapestr(g.value) + "; closegui";
 	SDL_Rect ref = things.back().r;
 	if (bdr.s) SDL_FreeSurface(bdr.s);
 	bdr = backdrop(gd, things, bdr.value.c_str());
-}
-
-int MapSelGUI::button_click(GameData& gd, GUIThing* thing)
-{
-	// select map
-	if (thing->id < 0)
-	{
-		loadmap(gd.map, gd.pos, thing->value, gd.resource_path);
-		return -1;
-	}
-	// refresh
-	refresh(gd);
 	center_page(gd);
-	return 0;
 }
 
 int MapSelGUI::page_close(GameData& gd)
@@ -115,20 +92,19 @@ int MapSelGUI::page_close(GameData& gd)
 	return 0;
 }
 
-// indices for important maingui things
-enum EDITGUI_INDICES { EGNAME, EGSAVE, EGLOAD, EGWALL, EGNEWMAP };
-
 EditGUI::EditGUI(SETUP_ARGS)
 {
 	this->id = id;
+	this->name = name;
 	// reserve enough memory so that the pointers remain valid
 	things.reserve(5);
 	// add things and ste up pointers
 	GUIThing* ref = addthing(gd, things, inputbox(gd, "Map name:", 100));
-	addthing(gd, things, button(gd, "Save"), ALIGN_RIGHT);
-	addthing(gd, things, button(gd, "Load"), ALIGN_LEFT, &ref->r);
+	addthing(gd, things, button(gd, "Save"), ALIGN_RIGHT)->onclick = "savemap (editguimapname)";
+	addthing(gd, things, button(gd, "Load"), ALIGN_LEFT, &ref->r)->onclick = "loadmap (editguimapname)";
 	ref = addthing(gd, things, button(gd, "Wall Editor"), ALIGN_CENTER, &ref->r);
-	addthing(gd, things, button(gd, "New Map"), ALIGN_CENTER, &ref->r);
+	ref->onclick = "showgui wall";
+	addthing(gd, things, button(gd, "New Map"), ALIGN_CENTER, &ref->r)->onclick = "newmap";
 	bdr = listmaps(gd);
 	center_page(gd);
 }
@@ -140,40 +116,25 @@ GUIThing EditGUI::listmaps(GameData& gd)
 	ref.x = things[EGNAME].r.x;
 	ref.w = things[EGNAME].r.w;
 	mapcolumns(gd, things, 3, ref);
+	// add onclick commands to map buttons
+	for (int i = 5; i < things.size(); i++)
+		things[i].onclick = std::string("editguimapname ")
+			+ gd.cmdhand->escapestr(things[i].value);
 	return backdrop(gd, things, gd.map->name.c_str());
 }
 
-int EditGUI::button_click(GameData& gd, GUIThing* thing)
+void EditGUI::refresh(GameData& gd)
 {
-	int idx = thing - &things[0];
-	switch (idx)
+	// update map listing
+	for (int i = things.size() - 1; things[i].type != GUI_TEXT; i--)
 	{
-	case EGWALL: return 2 + 3; // open wall gui
-	case EGSAVE: // save map
-		if (savemap(gd.map, things[EGNAME].value, gd.resource_path)) return 0;
-		// update map listing
-		for (int i = things.size() - 1; things[i].type != GUI_TEXT; i--)
-		{
-			SDL_FreeSurface(things[i].s);
-			things.pop_back();
-		}
-		SDL_FreeSurface(things.back().s);
+		SDL_FreeSurface(things[i].s);
 		things.pop_back();
-		SDL_FreeSurface(bdr.s);
-		bdr = listmaps(gd);
-		break;
-	// load map
-	case EGLOAD:
-		loadmap(gd.map, gd.pos, things[EGNAME].value, gd.resource_path);
-		break;
-	// new map
-	case EGNEWMAP: newmap(gd.map, gd.pos); break;
-	default: // select map
-		things[EGNAME].value = thing->value;
-		redrawinput(gd, &things[EGNAME]);
-		break;
 	}
-	return 0;
+	SDL_FreeSurface(things.back().s);
+	things.pop_back();
+	SDL_FreeSurface(bdr.s);
+	bdr = listmaps(gd);
 }
 
 void EditGUI::update(GameData& gd, int dt)
@@ -189,12 +150,10 @@ void EditGUI::update(GameData& gd, int dt)
 	);
 }
 
-// starting index of the wall buttons
-#define WGS 0
-
 WallGUI::WallGUI(SETUP_ARGS)
 {
 	this->id = id;
+	this->name = name;
 	wallgui_data* ptrs = new wallgui_data;
 	userdata = ptrs;
 	things.reserve(gd.map->w * gd.map->h + 1);
@@ -213,10 +172,14 @@ WallGUI::WallGUI(SETUP_ARGS)
 				things, button(gd, 10, 10, GRAY(0xff)),
 				ALIGN_TOP, NULL, 0
 			);
+			// toggle related wall when clicked with command: wall $x $y -1
+			g->onclick = std::string("wall ")
+				+ std::to_string(x) + " "
+				+ std::to_string(y) + " -1";
 			WallGUI::button_update(gd, g, wall_at(gd.map, x, y)->clip);
 		}
 	}
-	addthing(gd, things, button(gd, "Refresh"), ALIGN_RIGHT);
+	addthing(gd, things, button(gd, "Refresh"), ALIGN_RIGHT)->onclick = "refreshgui wall";
 	bdr = backdrop(gd, things, "Wall Editor", 10, 10);
 	center_page(gd);
 }
@@ -233,20 +196,10 @@ void WallGUI::button_update(GameData& gd, GUIThing* g, int overflown)
 	WallGUI::button_update(gd, g);
 }
 
-int WallGUI::button_click(GameData& gd, GUIThing* thing)
+void WallGUI::refresh(GameData& gd)
 {
-	int i = thing - &things[WGS];
-	// refresh buttons
-	if (thing == &things.back())
-	{
-		for (int j = 0; j < gd.map->w * gd.map->h; j++)
-			WallGUI::button_update(gd, &things[WGS + j], gd.map->data[j].clip);
-		return 0;
-	}
-	gd.map->data[i].clip = thing->overflown = !thing->overflown;
-	if (gd.map->data[i].n == 0) set_faces(&gd.map->data[i], 1, 1, 1, 1);
-	WallGUI::button_update(gd, thing);
-	return 0;
+	for (int j = 0; j < gd.map->w * gd.map->h; j++)
+		WallGUI::button_update(gd, &things[WG_WALLSTART + j], gd.map->data[j].clip);
 }
 
 void WallGUI::update(GameData& gd, int dt)
@@ -254,11 +207,11 @@ void WallGUI::update(GameData& gd, int dt)
 	GETDATA(wallgui_data);
 	// highlight tile that is being looked at
 	int new_hl = gd.hl.x + gd.hl.y * gd.map->w;
-	WallGUI::button_update(gd, &things[WGS + data->last_hl]);
+	WallGUI::button_update(gd, &things[WG_WALLSTART + data->last_hl]);
 	if (gd.editmode && withinmap(gd.map, gd.hl.x, gd.hl.y))
 	{
 		data->last_hl = new_hl;
-		SDL_SetSurfaceColorMod(things[WGS + data->last_hl].s, 0xff, 0, 0xff);
+		SDL_SetSurfaceColorMod(things[WG_WALLSTART + data->last_hl].s, 0xff, 0, 0xff);
 	}
 }
 
@@ -269,8 +222,8 @@ void WallGUI::draw(GameData& gd)
 	// draw player
 	Uint32 color = SDL_MapRGBA(gd.surface->format, 0xd0, 0, 0xff, 0xd0);
 	SDL_Rect r = { (int) (gd.pos.x * 10), (int) (gd.pos.y * 10), 7, 7 };
-	r.x += things[WGS].r.x;
-	r.y += things[WGS].r.y;
+	r.x += things[WG_WALLSTART].r.x;
+	r.y += things[WG_WALLSTART].r.y;
 	int len = 10, stroke = 3;
 	// if facing > 112.5 deg: -1; < 22.5 deg: 1; 0; but don't care about top or bottom hemi
 	// above, but using unit circle magic

@@ -1,6 +1,7 @@
 #include "command.h"
 #include <vector>
 #include <string>
+#include <cctype>
 
 
 int CommandHandler::parseint(const std::string &str)
@@ -40,84 +41,158 @@ const char* CommandHandler::geterror()
 	}
 }
 
-int CommandHandler::parse(const std::string &cmdstr, std::vector<std::string> &argv)
+bool CommandHandler::isargsep(char c)
 {
-	int argc = -1;
-	// if it doesn't start with whitespace, initialize first argument
-	if (cmdstr[0] != ' ')
-	{
-		argc++;
-		argv.push_back("");
-	}
-	// iterate through characters
-	for (std::string::const_iterator c = cmdstr.begin(); c != cmdstr.end(); c++)
+	// whitespace and semi-colons mark the end of an argument
+	return c == ';' || isspace(c);
+}
+
+std::string CommandHandler::escapestr(std::string str)
+{
+	std::string out = "[";
+	int nest = 1;
+	for (std::string::const_iterator c = str.begin(); c != str.end(); c++)
 	{
 		switch (*c)
 		{
-		case ' ':
+		case '[': nest++; break;
+		case ']': nest--; break;
+		case '\\': out += '\\'; break;
+		}
+		// prevent exiting nest level of 1
+		if (!nest)
+		{
+			out += '\\';
+			nest++;
+		}
+		out += *c;
+	}
+	// close the string
+	out += "]";
+	return out;
+}
+
+int CommandHandler::call(std::vector<std::string> argv) { return call(argv, resultvoid); }
+int CommandHandler::call(std::vector<std::string> argv, std::string &result)
+{
+	result = "";
+	for (const Command &cmd : cmdv)
+		if (argv[0] == cmd.name)
+			return cmd.call(argv, result);
+	error = UNKNOWN_COMMAND;
+	return -1;
+}
+
+void CommandHandler::copyinside(
+	const std::string &from,
+	std::string &to,
+	std::string::const_iterator &c,
+	const char open, const char close
+)
+{
+	// read until matching bracket
+	int nest = 1;
+	while (++c != from.end())
+	{
+		if (*c == open) nest++;
+		else if (*c == close) nest--;
+		else if (*c == '\\' && c + 1 != from.end()) c++;
+		// end loop on closing bracket without adding it
+		if (!nest) break;
+		to += *c;
+	}
+}
+
+int CommandHandler::parse(const std::string &cmdstr, std::vector<std::vector<std::string>> &argvv)
+{
+	std::vector<std::string> argv;
+	std::string arg = "";
+	// arg started if no leading separater
+	bool hasarg = !isargsep(cmdstr[0]);
+	// iterate through characters
+	for (std::string::const_iterator c = cmdstr.begin(); c != cmdstr.end(); c++)
+	{
+		if (isspace(*c))
+		{
 			// seek to end of space sequence
-			for (; c + 1 != cmdstr.end() && *(c + 1) == ' '; c++);
-			// if there's another argument, initialize it
+			while (c + 1 != cmdstr.end() && isspace(*(c + 1))) c++;
+			// if there's a following argument, initialize it
 			if (c + 1 != cmdstr.end())
 			{
-				argc++;
-				argv.push_back("");
+				if (hasarg) argv.push_back(arg);
+				arg = "";
+				hasarg = !isargsep(*(c + 1));
 			}
-			break;
+			continue;
+		}
+		switch (*c)
+		{
 		case '\\':
 			// escape next character
-			if (c + 1 != cmdstr.end()) argv[argc] += *++c;
+			if (c + 1 != cmdstr.end()) arg += *++c;
 			break;
 		case '"':
 			// read until next unescaped quote or end of string
 			while (++c != cmdstr.end() && *c != '"')
 			{
-				if (*c == '\\' && c + 1 != cmdstr.end()) argv[argc] += *++c;
-				else argv[argc] += *c;
+				if (*c == '\\' && c + 1 != cmdstr.end()) arg += *++c;
+				else arg += *c;
 			}
 			if (c == cmdstr.end()) return error = UNEXPECTED_END;
 			break;
 		case '[':
+			copyinside(cmdstr, arg, c, '[', ']');
+			if (c == cmdstr.end()) return error = UNEXPECTED_END;
+			break;
+		case '(':
 			{
-				// read until matching bracket
-				int nest = 1;
-				while (++c != cmdstr.end())
-				{
-					switch (*c)
-					{
-						// allow nesting
-					case '[': nest++; break;
-					case ']': nest--; break;
-					case '\\':
-						  if (c + 1 != cmdstr.end()) c++;
-						  break;
-					}
-					// end loop on closing bracket without adding it
-					if (!nest) break;
-					argv[argc] += *c;
-				}
+				std::string nestedcmdstr = "";
+				copyinside(cmdstr, nestedcmdstr, c, '(', ')');
 				if (c == cmdstr.end()) return error = UNEXPECTED_END;
+				// substitute for the result of running the nested command
+				std::string res;
+				run(nestedcmdstr, res);
+				arg += res;
 			}
 			break;
 		case ']':
+		case ')':
 			return error = UNEXPECTED_CHAR;
+		case ';':
+			// add this arg to argv
+			if (hasarg) argv.push_back(arg);
+			// add this argv to argvv and start a new argv
+			if (argv.size() > 0)
+				argvv.push_back(argv);
+			argv.clear();
+			arg = "";
+			// if there is a following command and the next isn't whitespace, an arg 
+			// starts
+			hasarg = (c + 1 != cmdstr.end() && !isargsep(*(c + 1)));
+			break;
 		default:
 			// append character to current argument
-			argv[argc] += *c;
+			arg += *c;
 			break;
 		}
 	}
+	// add last arg and cmd
+	if (hasarg) argv.push_back(arg);
+	if (argv.size() > 0) argvv.push_back(argv);
+
 	return error = NO_ERROR;
 }
 
-int CommandHandler::run(const std::string &cmdstr)
+int CommandHandler::run(const std::string &cmdstr) { return run(cmdstr, resultvoid); }
+int CommandHandler::run(const std::string &cmdstr, std::string &result)
 {
 	if (!cmdstr.size()) return 0;
 	// get argv and check for error
-	std::vector<std::string> argv;
-	if (error = parse(cmdstr, argv)) return -1;
+	std::vector<std::vector<std::string>> argvv;
+	if ((error = parse(cmdstr, argvv))) return -1;
 	// find and call command
-	for (const Command &cmd : cmdv) if (argv[0] == cmd.name) return cmd.call(argv);
-	error = UNKNOWN_COMMAND;
-	return -1;
+	for (const std::vector<std::string> &argv : argvv)
+		if (call(argv, result) == -1)
+			return -1;
+	return 0;
 }
