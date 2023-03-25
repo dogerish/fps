@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 #include <cctype>
+#include <stdexcept>
 
 
 int CommandHandler::parseint(const std::string &str)
