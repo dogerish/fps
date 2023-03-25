@@ -53,8 +53,10 @@ $(RELEASEZIP): $(EXECUTABLE) $(RELEASEDEPS) | $(RELEASEDIR)
 $(BUILDDIR) $(RELEASEDIR):
 	mkdir -p $@
 
-$(EXECUTABLE): $(OBJECTS) | $(BUILDDIR)
+$(EXECUTABLE): $(OBJECTS)
 	$(CXX) $^ $(LDFLAGS) -o $@ #-lstdc++fs
+
+$(OBJECTS): | $(BUILDDIR)
 
 $(BUILDDIR)/%.o: $(SOURCEDIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
