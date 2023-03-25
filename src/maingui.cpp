@@ -254,3 +254,13 @@ void WallGUI::draw(GameData& gd)
 	r.x -= r.w / 2; r.y -= r.w / 2;
 	SDL_FillRect(gd.surface, &r, color);
 }
+
+CommandGUI::CommandGUI(SETUP_ARGS)
+{
+	this->id = id;
+	this->name = name;
+	addthing(gd, things, inputbox(gd, "Command:", 400));
+	addthing(gd, things, button(gd, "Run"), ALIGN_RIGHT)->onclick = "eval (commandguicmd)";
+	bdr = backdrop(gd, things, "Command Interface");
+	center_page(gd);
+}

@@ -66,4 +66,13 @@ class WallGUI: public GUIPage
 		void draw(GameData& gd) override;
 };
 
+/* ---------- command gui (4) ---------- */
+class CommandGUI: public GUIPage
+{
+	public:
+		enum COMMANDGUI_INDICES { ID_CMD = 0 };
+
+		CommandGUI(SETUP_ARGS);
+};
+
 #endif

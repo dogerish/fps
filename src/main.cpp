@@ -50,13 +50,14 @@ const char* USAGE = "raycaster [-Rresource_directory]\n";
 
 GameData gd;
 GameTextures tex;
-const int NUMPAGES = 4;
+const int NUMPAGES = 5;
 enum GUIPageID {
 	GP_NONE = -1,
 	GP_TITLE = 0,
 	GP_MAPSEL = 1,
 	GP_EDIT = 2,
-	GP_WALL = 3
+	GP_WALL = 3,
+	GP_COMMAND = 4,
 };
 GUIPage* guipages[NUMPAGES];
 
@@ -118,6 +119,19 @@ CMDDEF(editguimapname,
 	return 0;
 })
 
+	/* commandguicmd [<cmd>] */
+CMDDEF(commandguicmd,
+{
+	GUIThing &t = guipages[GP_COMMAND]->things[CommandGUI::ID_CMD];
+	if (argv.size() > 1)
+	{
+		t.value = argv[1];
+		redrawinput(gd, &t);
+	}
+	result = t.value;
+	return 0;
+})
+
 	/* - COMMANDS - */
 
 	/* echo <text> */
@@ -126,6 +140,13 @@ CMDDEF(echo,
 	if (argv.size() < 2) gd.log(result = "");
 	else gd.log(result = argv[1]);
 	return 0;
+})
+
+	/* eval <cmdstr> */
+CMDDEF(eval, 
+{
+	if (argv.size() < 2) return 0;
+	return gd.cmdhand->run(argv[1], result);
 })
 
 	/* showgui <guiname> */
@@ -251,9 +272,11 @@ CMDDEF(wall,
 int main(int argc, char* argv[])
 {
 	std::vector<Command> cmdv = {
-		cmd_editguimapname,
-		cmd_echo,
 		cmd_gamemode,
+		cmd_editguimapname,
+		cmd_commandguicmd,
+		cmd_echo,
+		cmd_eval,
 		cmd_showgui,
 		cmd_closegui,
 		cmd_refreshgui,
@@ -303,6 +326,7 @@ int main(int argc, char* argv[])
 	guipages[GP_MAPSEL] = new MapSelGUI(gd, GP_MAPSEL, "mapsel");
 	guipages[GP_EDIT] = new EditGUI(gd, GP_EDIT, "edit");
 	guipages[GP_WALL] = new WallGUI(gd, GP_WALL, "wall");
+	guipages[GP_COMMAND] = new CommandGUI(gd, GP_COMMAND, "command");
 	gd.page = GP_TITLE;
 	SDL_StopTextInput();
 	// main loop variables
@@ -387,7 +411,10 @@ int main(int argc, char* argv[])
 				case SDLK_DOWN: facedelta = -1; break;
 				case SDLK_UP:   facedelta = +1; break;
 				case SDLK_ESCAPE:
-					guipages[0]->opengui(gd);
+					guipages[GP_TITLE]->opengui(gd);
+					break;
+				case SDLK_SLASH:
+					guipages[GP_COMMAND]->opengui(gd);
 					break;
 				}
 				// update the texture if needed
